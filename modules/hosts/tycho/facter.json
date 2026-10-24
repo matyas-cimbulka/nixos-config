@@ -2,9 +2,6 @@
   "version": 1,
   "system": "x86_64-linux",
   "virtualisation": "none",
-  "uefi": {
-    "supported": false
-  },
   "hardware": {
     "bios": {
       "apm_info": {
@@ -21,7 +18,7 @@
       "pnp": true,
       "pnp_id": 0,
       "lba_support": false,
-      "low_memory_size": 640000,
+      "low_memory_size": 532480,
       "smbios_version": 768
     },
     "bridge": [
@@ -75,7 +72,6 @@
         "model": "Intel ISA bridge",
         "sysfs_id": "/devices/pci0000:00/0000:00:1f.0",
         "sysfs_bus_id": "0000:00:1f.0",
-        "sysfs_iommu_group_id": 5,
         "detail": {
           "function": 0,
           "command": 327,
@@ -135,7 +131,6 @@
         "model": "Intel Host bridge",
         "sysfs_id": "/devices/pci0000:00/0000:00:00.0",
         "sysfs_bus_id": "0000:00:00.0",
-        "sysfs_iommu_group_id": 1,
         "detail": {
           "function": 0,
           "command": 326,
@@ -289,7 +284,6 @@
           "l1tf",
           "mds",
           "swapgs",
-          "taa",
           "itlb_multihit",
           "srbds",
           "mmio_stale_data",
@@ -312,7 +306,7 @@
         "fpu_exception": false,
         "cpuid_level": 22,
         "write_protect": false,
-        "tlb_size": 9643,
+        "tlb_size": 32766,
         "clflush_size": 64,
         "cache_alignment": 64,
         "address_sizes": {
@@ -395,7 +389,8 @@
           "sd"
         ],
         "driver_modules": [
-          "ahci"
+          "ahci",
+          "sd_mod"
         ]
       },
       {
@@ -471,7 +466,8 @@
           "sd"
         ],
         "driver_modules": [
-          "ahci"
+          "ahci",
+          "sd_mod"
         ]
       }
     ],
@@ -531,7 +527,6 @@
         "model": "Intel VGA compatible controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:02.0",
         "sysfs_bus_id": "0000:00:02.0",
-        "sysfs_iommu_group_id": 0,
         "resources": [
           {
             "type": "io",
@@ -543,26 +538,19 @@
         ],
         "detail": {
           "function": 0,
-          "command": 7,
+          "command": 1031,
           "header_type": 0,
           "secondary_bus": 0,
           "prog_if": 0
         },
-        "driver_info": {
-          "type": "module",
-          "db_entry_0": [
-            "i915"
-          ],
-          "active": false,
-          "modprobe": true,
-          "names": [
-            "i915"
-          ],
-          "module_args": [
-            ""
-          ],
-          "conf": ""
-        },
+        "driver": "i915",
+        "driver_module": "i915",
+        "drivers": [
+          "i915"
+        ],
+        "driver_modules": [
+          "i915"
+        ],
         "module_alias": "pci:v00008086d00005912sv00001734sd0000121Cbc03sc00i00"
       }
     ],
@@ -590,7 +578,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 7.0.14-17-pve xhci-hcd",
+          "name": "Linux 7.0.9 xhci-hcd",
           "value": 7531
         },
         "device": {
@@ -604,7 +592,7 @@
           "value": 0
         },
         "serial": "0000:00:14.0",
-        "model": "Linux 7.0.14-17-pve xhci-hcd xHCI Host Controller",
+        "model": "Linux 7.0.9 xhci-hcd xHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:14.0/usb1/1-0:1.0",
         "sysfs_bus_id": "1-0:1.0",
         "resources": [
@@ -677,7 +665,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 7.0.14-17-pve xhci-hcd",
+          "name": "Linux 7.0.9 xhci-hcd",
           "value": 7531
         },
         "device": {
@@ -691,7 +679,7 @@
           "value": 0
         },
         "serial": "0000:00:14.0",
-        "model": "Linux 7.0.14-17-pve xhci-hcd xHCI Host Controller",
+        "model": "Linux 7.0.9 xhci-hcd xHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:14.0/usb2/2-0:1.0",
         "sysfs_bus_id": "2-0:1.0",
         "detail": {
@@ -809,7 +797,6 @@
         "model": "Intel Ethernet controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:1f.6",
         "sysfs_bus_id": "0000:00:1f.6",
-        "sysfs_iommu_group_id": 6,
         "unix_device_names": [
           "enp0s31f6"
         ],
@@ -838,27 +825,12 @@
         "driver_modules": [
           "e1000e"
         ],
-        "driver_info": {
-          "type": "module",
-          "db_entry_0": [
-            "e1000e"
-          ],
-          "active": true,
-          "modprobe": true,
-          "names": [
-            "e1000e"
-          ],
-          "module_args": [
-            ""
-          ],
-          "conf": ""
-        },
         "module_alias": "pci:v00008086d000015B7sv00001734sd0000121Fbc02sc00i00"
       }
     ],
     "network_interface": [
       {
-        "index": 27,
+        "index": 26,
         "attached_to": 18,
         "class_list": [
           "network_interface"
@@ -899,7 +871,7 @@
         ]
       },
       {
-        "index": 29,
+        "index": 27,
         "attached_to": 0,
         "class_list": [
           "network_interface"
@@ -972,7 +944,6 @@
         "model": "Intel Memory controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:1f.2",
         "sysfs_bus_id": "0000:00:1f.2",
-        "sysfs_iommu_group_id": 5,
         "detail": {
           "function": 2,
           "command": 6,
@@ -1032,29 +1003,21 @@
         "model": "Intel Communication controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:16.0",
         "sysfs_bus_id": "0000:00:16.0",
-        "sysfs_iommu_group_id": 3,
         "detail": {
           "function": 0,
-          "command": 0,
+          "command": 1030,
           "header_type": 0,
           "secondary_bus": 0,
           "prog_if": 0
         },
-        "driver_info": {
-          "type": "module",
-          "db_entry_0": [
-            "mei_me"
-          ],
-          "active": false,
-          "modprobe": true,
-          "names": [
-            "mei_me"
-          ],
-          "module_args": [
-            ""
-          ],
-          "conf": ""
-        },
+        "driver": "mei_me",
+        "driver_module": "mei_me",
+        "drivers": [
+          "mei_me"
+        ],
+        "driver_modules": [
+          "mei_me"
+        ],
         "module_alias": "pci:v00008086d0000A13Asv00001734sd0000121Dbc07sc80i00"
       },
       {
@@ -1107,10 +1070,9 @@
         "model": "Intel Signal processing controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:14.2",
         "sysfs_bus_id": "0000:00:14.2",
-        "sysfs_iommu_group_id": 2,
         "detail": {
           "function": 2,
-          "command": 262,
+          "command": 258,
           "header_type": 0,
           "secondary_bus": 0,
           "prog_if": 0
@@ -1123,21 +1085,6 @@
         "driver_modules": [
           "intel_pch_thermal"
         ],
-        "driver_info": {
-          "type": "module",
-          "db_entry_0": [
-            "intel_pch_thermal"
-          ],
-          "active": true,
-          "modprobe": true,
-          "names": [
-            "intel_pch_thermal"
-          ],
-          "module_args": [
-            ""
-          ],
-          "conf": ""
-        },
         "module_alias": "pci:v00008086d0000A131sv00001734sd0000121Dbc11sc80i00"
       },
       {
@@ -1190,7 +1137,6 @@
         "model": "Intel SMBus",
         "sysfs_id": "/devices/pci0000:00/0000:00:1f.4",
         "sysfs_bus_id": "0000:00:1f.4",
-        "sysfs_iommu_group_id": 5,
         "resources": [
           {
             "type": "io",
@@ -1215,21 +1161,6 @@
         "driver_modules": [
           "i2c_i801"
         ],
-        "driver_info": {
-          "type": "module",
-          "db_entry_0": [
-            "i2c_i801"
-          ],
-          "active": true,
-          "modprobe": true,
-          "names": [
-            "i2c_i801"
-          ],
-          "module_args": [
-            ""
-          ],
-          "conf": ""
-        },
         "module_alias": "pci:v00008086d0000A123sv00001734sd0000121Dbc0Csc05i00"
       }
     ],
@@ -1287,7 +1218,6 @@
         "model": "Intel Mass storage controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:17.0",
         "sysfs_bus_id": "0000:00:17.0",
-        "sysfs_iommu_group_id": 4,
         "resources": [
           {
             "type": "io",
@@ -1326,21 +1256,6 @@
         "driver_modules": [
           "ahci"
         ],
-        "driver_info": {
-          "type": "module",
-          "db_entry_0": [
-            "ahci"
-          ],
-          "active": true,
-          "modprobe": true,
-          "names": [
-            "ahci"
-          ],
-          "module_args": [
-            ""
-          ],
-          "conf": ""
-        },
         "module_alias": "pci:v00008086d0000A102sv00001734sd0000121Dbc01sc06i01"
       }
     ],
@@ -1402,7 +1317,6 @@
         "model": "Intel USB Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:14.0",
         "sysfs_bus_id": "0000:00:14.0",
-        "sysfs_iommu_group_id": 2,
         "detail": {
           "function": 0,
           "command": 1350,
@@ -1418,21 +1332,6 @@
         "driver_modules": [
           "xhci_pci"
         ],
-        "driver_info": {
-          "type": "module",
-          "db_entry_0": [
-            "xhci_pci"
-          ],
-          "active": true,
-          "modprobe": true,
-          "names": [
-            "xhci_pci"
-          ],
-          "module_args": [
-            ""
-          ],
-          "conf": ""
-        },
         "module_alias": "pci:v00008086d0000A12Fsv00001734sd0000121Dbc0Csc03i30"
       }
     ]
