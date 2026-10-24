@@ -17,6 +17,8 @@
 
     networking.hostName = "tycho";
 
+    sops.defaultSopsFile = ./tycho-sops.yaml;
+
     system.stateVersion = "26.05";
   };
 }
