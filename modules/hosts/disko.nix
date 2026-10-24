@@ -2,7 +2,7 @@
 let
   firstDisk = "/dev/disk/by-id/ata-ST4000NM0024-1HT178_Z4F0EAL2";
   secondDisk = "/dev/disk/by-id/ata-ST4000NM0024-1HT178_S4F00BRX";
-  
+
   subvolume = mountpoint: {
     inherit mountpoint;
     mountOptions = [ "compress=zstd:6" ];
@@ -12,7 +12,12 @@ in
   flake.modules.nixos.tycho-disko = { lib, ... }: {
     imports = [ inputs.disko.nixosModules.disko ];
 
-    disko.devices._meta.deviceDependencies.disk.first = [ [ "disk" "second" ] ];
+    disko.devices._meta.deviceDependencies.disk.first = [
+      [
+        "disk"
+        "second"
+      ]
+    ];
 
     disko.devices.disk = {
       first = {
@@ -30,7 +35,15 @@ in
               size = "100%";
               content = {
                 type = "btrfs";
-                extraArgs = [ "-L" "tycho-root" "-d" "raid1" "-m" "raid1" "${secondDisk}-part2" ];
+                extraArgs = [
+                  "-L"
+                  "tycho-root"
+                  "-d"
+                  "raid1"
+                  "-m"
+                  "raid1"
+                  "${secondDisk}-part2"
+                ];
 
                 subvolumes = {
                   "@" = subvolume "/";
@@ -57,7 +70,9 @@ in
               type = "EF02";
             };
 
-            root = { size = "100%"; };
+            root = {
+              size = "100%";
+            };
           };
         };
       };

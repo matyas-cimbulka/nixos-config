@@ -6,7 +6,6 @@ in
   flake.modules.nixos.server-profile = { config, ... }: {
     imports = [
       flakeConfig.flake.modules.nixos.base-profile
-      flakeConfig.flake.modules.nixos.matyas
     ];
 
     assertions = [
