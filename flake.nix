@@ -1,15 +1,18 @@
 {
-  description = "A very basic flake";
+  description = "My NixOS flake";
+
+  outputs = inputs: import ./outputs.nix inputs;
 
   inputs = {
-    nixpkgs.url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.zst";
-  };
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
-  outputs = inputs: {
-    packages = builtins.mapAttrs (system: pkgs: {
-      hello = pkgs.hello;
+    flake-parts.url = "github:hercules-ci/flake-parts";
 
-      default = inputs.self.packages.${system}.hello;
-    }) inputs.nixpkgs.legacyPackages;
+    import-tree.url = "github:vic/import-tree";
+
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 }
