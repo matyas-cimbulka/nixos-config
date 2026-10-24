@@ -13,7 +13,11 @@
       config.flake.modules.nixos.server-profile
     ];
 
-    hardware.facter.reportPath = ./facter.json;
+    hardware.facter = {
+      reportPath = ./facter.json;
+
+      detected.dhcp.enable = false;
+    };
 
     networking.hostName = "tycho";
 
