@@ -5,6 +5,9 @@
       inputs.sops-nix.nixosModules.sops
     ];
 
-    sops.age.keyFile = "/var/lib/sops-nix/key.txt";
+    sops = {
+      age.keyFile = "/var/lib/sops-nix/key.txt";
+      useSystemdActivation = true;
+    };
   };
 }

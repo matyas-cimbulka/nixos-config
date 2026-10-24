@@ -17,6 +17,11 @@ in
 
     sops.secrets.tailscale-oauth = { };
 
+    systemd.services.tailscaled-autoconnect = {
+      after = [ "sops-install-secrets.service" ];
+      requires = [ "sops-install-secrets.service" ];
+    };
+
     services.tailscale = {
       authKeyFile = config.sops.secrets.tailscale-oauth.path;
 
