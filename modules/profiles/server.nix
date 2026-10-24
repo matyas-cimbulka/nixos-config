@@ -1,9 +1,19 @@
-{ config, ... }:
+{ config, lib, ... }:
+let
+  flakeConfig = config;
+in
 {
-  flake.modules.nixos.server-profile = {
+  flake.modules.nixos.server-profile = { config, ... }: {
     imports = [
-      config.flake.modules.nixos.base-profile
-      config.flake.modules.nixos.matyas
+      flakeConfig.flake.modules.nixos.base-profile
+      flakeConfig.flake.modules.nixos.matyas
+    ];
+
+    assertions = [
+      {
+        assertion = config.networking.nameservers != [ ];
+        message = "The server profile requires explicit networking.nameservers";
+      }
     ];
 
     security.sudo = {
@@ -12,6 +22,15 @@
     };
 
     boot.loader.grub.configurationLimit = 15;
+
+    networking = {
+      firewall.enable = lib.mkDefault true;
+      networkmanager.enable = lib.mkDefault false;
+      nftables.enable = lib.mkDefault true;
+      useDHCP = lib.mkDefault false;
+      useHostResolvConf = lib.mkDefault false;
+      useNetworkd = lib.mkDefault true;
+    };
 
     services.openssh.enable = true;
   };
