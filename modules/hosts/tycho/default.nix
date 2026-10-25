@@ -2,6 +2,7 @@
 {
   flake.nixosConfigurations.tycho = inputs.nixpkgs.lib.nixosSystem {
     modules = [
+      inputs.microvm.nixosModules.host
       config.flake.modules.nixos.tycho
     ];
   };
@@ -11,7 +12,8 @@
       config.flake.modules.nixos.tycho-disko
       config.flake.modules.nixos.tycho-network
       config.flake.modules.nixos.tycho-microvm-bridge
-      
+      config.flake.modules.nixos.tycho-microvms
+
       config.flake.modules.nixos.server-profile
     ];
 
