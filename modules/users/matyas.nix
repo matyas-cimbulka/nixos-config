@@ -34,5 +34,9 @@
     home-manager.users.matyas.imports = [
       config.flake.modules.homeManager.matyas-server
     ];
+
+    services.openssh.settings = {
+      AllowUsers = [ "matyas" ];
+    };
   };
 }

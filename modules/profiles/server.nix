@@ -31,6 +31,17 @@ in
       useNetworkd = lib.mkDefault true;
     };
 
-    services.openssh.enable = true;
+    services.openssh = {
+      enable = true;
+      
+      settings = {
+        PermitRootLogin = "no";
+        PasswordAuthentication = false;
+        KbdInteractiveAuthenticaiton = false;
+        
+        LoginGraceTime = 30;
+        MaxAuthTries = 3;
+      };
+    };
   };
 }
