@@ -3,6 +3,10 @@
   flake.modules.homeManager.matyas-cli-fish = {
     programs.fish = {
       enable = true;
+
+      interactiveShellInit = ''
+        set fish_greeting # Disable greeting
+      '';
     };
   };
 
