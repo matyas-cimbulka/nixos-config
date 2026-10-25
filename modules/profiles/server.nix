@@ -37,7 +37,7 @@ in
       settings = {
         PermitRootLogin = "no";
         PasswordAuthentication = false;
-        KbdInteractiveAuthenticaiton = false;
+        KbdInteractiveAuthentication = false;
         
         LoginGraceTime = 30;
         MaxAuthTries = 3;
