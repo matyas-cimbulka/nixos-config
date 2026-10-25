@@ -10,6 +10,8 @@
     imports = [
       config.flake.modules.nixos.tycho-disko
       config.flake.modules.nixos.tycho-network
+      config.flake.modules.nixos.tycho-microvm-bridge
+      
       config.flake.modules.nixos.server-profile
     ];
 
