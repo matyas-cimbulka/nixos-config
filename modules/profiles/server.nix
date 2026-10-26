@@ -6,8 +6,11 @@ in
   flake.modules.nixos.server-profile = { config, ... }: {
     imports = [
       flakeConfig.flake.modules.nixos.base-profile
-    ];
 
+      flakeConfig.flake.modules.nixos.sops
+      flakeConfig.flake.modules.nixos.tailscale-server
+    ];
+    
     assertions = [
       {
         assertion = config.networking.nameservers != [ ];
