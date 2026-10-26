@@ -1,10 +1,6 @@
-{ config, lib, ... }:
+{ lib, ... }:
 {
   flake.modules.nixos.base-profile = {
-    imports = [
-      config.flake.modules.nixos.sops
-    ];
-
     nix = {
       settings.experimental-features = [
         "nix-command"
