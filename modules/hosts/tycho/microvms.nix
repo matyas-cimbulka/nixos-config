@@ -3,13 +3,7 @@ let
   flakeConfig = config;
 in
 {
-  flake.modules.nixos.tycho-microvms = { config, lib, pkgs, ... }:
-  let
-    dependentVmServices = map
-      (name: "microvm@{name}")
-      (lib.filter (name: name != "anderson")
-        (builtins.attrNames config.microvm.vms));
-  in
+  flake.modules.nixos.tycho-microvms = { config, ... }:
   {
     sops.secrets.tailscale-vm-oauth = { };
 
@@ -25,64 +19,20 @@ in
       };
     };
 
-    # systemd.services."microvm@behemoth" = {
-    #   requires = [ "sops-install-secrets.service" ];
-    #   after = [ "sops-install-secrets.service" ];
+    systemd.services = {
+      "microvm@" = {
+        requires = [ "dnsmasq.service" ];
+        after = [ "dnsmasq.service" ];
+      };
 
-    #   serviceConfig.LoadCredential = [
-    #     "tailscale-vm-oauth:${config.sops.secrets.tailscale-vm-oauth.path}"
-    #   ];
-    # };
+      "microvm@behemoth" = {
+        requires = [ "sops-install-secrets.service" ];
+        after = [ "sops-install-secrets.service" ];
 
-    systemd.services = lib.mkMerge [
-      {
-        "microvm@behemoth" = {
-          requires = [ "sops-install-secrets.service" ];
-          after = [ "sops-install-secrets.service" ];
-
-          serviceConfig.LoadCredential = [
-            "tailscale-vm-oauth:${config.sops.secrets.tailscale-vm-oauth.path}"
-          ];
-        };
-
-        anderson-dns-ready = {
-          description = "Wait for DNS through Anderson";
-
-          requires = [ "microvm@anderson.service" ];
-          after = [ "microvm@anderson.service" ];
-
-          path = [
-            pkgs.dnsutils
-            pkgs.gnugrep
-            pkgs.coreutils
-          ];
-
-          serviceConfig = {
-            Type = "oneshot";
-            RemainAfterExit = true;
-            TimeoutStartSec = 120s;
-          };
-
-          script = ''
-            echo "Waiting for Anderson to resolve google.com";
-
-            until dig @10.77.0.2 google.com A \
-              +time=1 +tries=1 +short |
-              grep -Eq '^[0-9]+(\.[0-9]+){3}$'
-            do
-              sleep 1
-            done
-
-            echo "DNS through Anderson is ready"
-          '';
-        };
-      }
-      
-      (lib.genAttrs dependentVmServices (_: {
-        requires = [ "anderson-dns-ready.service" ];
-        after = [ "anderson-dns-ready.service" ]; 
-      }))
-    ];
-
+        serviceConfig.LoadCredential = [
+          "tailscale-vm-oauth:${config.sops.secrets.tailscale-vm-oauth.path}"
+        ];
+      };
+    };
   };
 }

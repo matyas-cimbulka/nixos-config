@@ -1,14 +1,5 @@
 {
   flake.modules.nixos.tycho-network = {
-    networking = {
-      nameservers = [
-        "1.1.1.1"
-        "1.0.0.1"
-      ];
-
-      useDHCP = false;
-    };
-
     systemd.network.networks.wan = {
       matchConfig.PermanentMACAddress = "90:1b:0e:fc:ee:3d";
       address = [
