@@ -4,18 +4,21 @@
   flake.modules.nixos.anderson = {
     imports = [
       config.flake.modules.nixos.microvm-profile
+
+      config.flake.modules.nixos.tailscale-microvm
+      config.flake.modules.nixos.tailscale-dns
     ];
 
     microvm = {
-      hypervisor = "cloud-hypervisor";
+      hypervisor = "qemu";
 
       vcpu = 1;
-      mem = 256;
+      mem = 512;
 
       volumes = [
         {
-          image = "dnsmasq.img";
-          mountPoint = "/var/lib/dnsmasq";
+          image = "anderson-tailscale.img";
+          mountPoint = "/var/lib/tailscale";
           size = 128;
         }
       ];
@@ -30,5 +33,19 @@
     };
     
     networking.hostName = "anderson";
+
+    services.openssh = {
+      enable = true;
+
+      settings.PasswordAuthentication = true;
+    };
+
+    users.users.test = {
+      isNormalUser = true;
+
+      password = "password";
+
+      extraGroups = [ "wheel" ];
+    };
   };
 }

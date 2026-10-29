@@ -39,14 +39,31 @@ in
       flakeConfig.flake.modules.nixos.tailscale
     ];
 
+    systemd.network.wait-online = {
+      enable = true;
+      extraArgs = [ "--ipv4" "--dns" ];
+    };
+
     services.tailscale = {
       authKeyFile = "/run/credentials/tailscaled-autoconnect.service/tailscale-vm-oauth";
 
       extraUpFlags = [ "--advertise-tags=tag:vm" ];
     };
 
-    systemd.services.tailscaled-autoconnect.serviceConfig.ImportCredential = [
-      "tailscale-vm-oauth"
-    ];
+    systemd.services.tailscaled-autoconnect = {
+        requires = [
+          "systemd-resolved.service"
+          "systemd-networkd-wait-online.service"
+        ];
+
+        after = [
+          "systemd-resolved.service"
+          "systemd-networkd-wait-online.service"
+        ];
+
+      serviceConfig.ImportCredential = [
+        "tailscale-vm-oauth"
+      ];
+    };
   };
 }

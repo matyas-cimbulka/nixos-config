@@ -8,7 +8,13 @@ in
     sops.secrets.tailscale-vm-oauth = { };
 
     microvm.vms = {
-      anderson.config.imports = [ flakeConfig.flake.modules.nixos.anderson ];
+      anderson.config = {
+        imports = [ flakeConfig.flake.modules.nixos.anderson ];
+
+        microvm.credentialFiles.tailscale-vm-oauth =
+          "/run/credentials/microvm@anderson.service/tailscale-vm-oauth";
+      };
+
       test-microvm.config.imports = [ flakeConfig.flake.modules.nixos.test-microvm ];
       
       behemoth.config = {
@@ -23,6 +29,15 @@ in
       "microvm@" = {
         requires = [ "dnsmasq.service" ];
         after = [ "dnsmasq.service" ];
+      };
+
+      "microvm@anderson" = {
+        requires = [ "sops-install-secrets.service" ];
+        after = [ "sops-install-secrets.service" ];
+
+        serviceConfig.LoadCredential = [
+          "tailscale-vm-oauth:${config.sops.secrets.tailscale-vm-oauth.path}"
+        ];
       };
 
       "microvm@behemoth" = {
