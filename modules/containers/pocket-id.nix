@@ -17,11 +17,21 @@
 
       environment = {
         APP_URL = "https://id.cimbulka.net";
-        TRUSTED_PROXY = "172.18.0.0/16";
+        TRUST_PROXY = "172.18.0.0/16";
 
-        UI_CONFIG_DISABLE = "true";
-        ALLOW_USERS_SIGNUPS = "disalbe";
+        UI_CONFIG_DISABLED = "true";
+        ALLOW_USERS_SIGNUPS = "disabled";
         ALLOW_INSECURE_CALLBACK_URLS = "false";
+
+        SMTP_HOST = "smtp.purelymail.com";
+        SMTP_PORT = "587";
+        SMTP_FROM = "id@cimbulka.net";
+        SMTP_USER = "id@cimbulka.net";
+
+        SMTP_TLS = "starttls";
+        EMAIL_LOGIN_NOTIFICATION_ENABLED = "true";
+        EMAIL_ONE_TIME_ACCESS_AS_ADMIN_ENABLED = "true";
+        EMAIL_VERIFICATION_ENABLED = "true";
 
         ANALYTICS_DISABLED = "true";
         LOG_JSON = "true";

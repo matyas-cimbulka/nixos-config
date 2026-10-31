@@ -8,6 +8,7 @@ in
     sops.secrets.tailscale-vm-oauth = { };
     sops.secrets.cloudflare-dns-api-token = { };
     sops.secrets.pocket-id-encryption-key = { };
+    sops.secrets.pocket-id-smtp-password = { };
 
     sops.templates."cloudflare-dns.env" = {
       mode = "0400";
@@ -22,6 +23,7 @@ in
 
       content = ''
         ENCRYPTION_KEY=${config.sops.placeholder.pocket-id-encryption-key}
+        SMTP_PASSWORD=${config.sops.placeholder.pocket-id-smtp-password}
       '';
     };
 
