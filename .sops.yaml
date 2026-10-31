@@ -1,0 +1,6 @@
+creation_rules:
+  - path_regex: '^modules/hosts/tycho/sops\.yaml$'
+    key_groups:
+      - age:
+          - age1rvu7wc05twvklsfasx3tnx7y7y8ewunmd7f5a96lc6hm0kwpda5q0lvwem
+          - age1maq4f3627stzj3ph5rdj657u36xqjcqy2m9fx5nktr2a9x7h2ugq54mu5a
