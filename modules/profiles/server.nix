@@ -6,8 +6,11 @@ in
   flake.modules.nixos.server-profile = { config, ... }: {
     imports = [
       flakeConfig.flake.modules.nixos.base-profile
-    ];
 
+      flakeConfig.flake.modules.nixos.sops
+      flakeConfig.flake.modules.nixos.tailscale-server
+    ];
+    
     assertions = [
       {
         assertion = config.networking.nameservers != [ ];
@@ -37,7 +40,7 @@ in
       settings = {
         PermitRootLogin = "no";
         PasswordAuthentication = false;
-        KbdInteractiveAuthenticaiton = false;
+        KbdInteractiveAuthentication = false;
         
         LoginGraceTime = 30;
         MaxAuthTries = 3;
