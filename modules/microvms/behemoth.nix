@@ -5,6 +5,10 @@
       config.flake.modules.nixos.microvm-profile
 
       config.flake.modules.nixos.tailscale-microvm
+      config.flake.modules.nixos.docker
+
+      config.flake.modules.nixos.traefik
+      config.flake.modules.nixos.pocket-id
     ];
 
     microvm = {
@@ -47,7 +51,7 @@
 
       password = "password";
 
-      extraGroups = [ "wheel" ];
+      extraGroups = [ "wheel" "docker" ];
     };
   };
 }

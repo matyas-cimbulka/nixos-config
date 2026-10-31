@@ -1,5 +1,7 @@
 tailscale-server-oauth: ENC[AES256_GCM,data:7fevs0+F83ipzCZC8utz8kISOqtMZ9uhLWO86rGtkK1dZ7U2y7XqHSlo3zMxoVqeR9y40LTFjuyOTgWURTx6qA==,iv:znv1BkosezK0pm3bf3BwNZJubbkFwiug/ghlw+5tbAA=,tag:63viftgMPuMHwd+MmvzgWg==,type:str]
 tailscale-vm-oauth: ENC[AES256_GCM,data:JLsF499JfkgyW1ruqCqjDVNurfMDndX6K3+ZnTBsneblkLdbYCHzJIhiTt3W7OWwvJJhIPG+BoPMc3Up6/bwiA==,iv:Dxr27v4jMDBU05a16bhMhPX5o2RZhAQ48++HL6wy7HU=,tag:O3uSOSTzkVEdN75AvpKRNw==,type:str]
+cloudflare-dns-api-token: ENC[AES256_GCM,data:LcAwQllOfqDL/eSV/NIXqGmB0QdzKyU89JE/82MGW9Ai2BzPYtkAYw==,iv:T9ka1VjELvig8MnKclleOcfCtnkDxkdgQltMDvw5N9A=,tag:o4EIjRnfx+nAiPIvneNKBw==,type:str]
+pocket-id-encryption-key: ENC[AES256_GCM,data:RCgQqFIiMaWLLrVfwPqns8H/Gm50GnkSjWV13MDrrk5NVhHX5wHM9tMHVo4=,iv:zazkJiHFOHmboQnNZt56AP/IGo4Vft+HARBrGw9Lpd8=,tag:8mM2h24P7lwoAwDZfLJ5ZA==,type:str]
 sops:
     age:
         - enc: |
@@ -20,7 +22,7 @@ sops:
             Hs3W56drq6amf4NY98zioVKs2JyMe/4PV2GWZtdUid0Ub9Jdgz7jXg==
             -----END AGE ENCRYPTED FILE-----
           recipient: age1maq4f3627stzj3ph5rdj657u36xqjcqy2m9fx5nktr2a9x7h2ugq54mu5a
-    lastmodified: "2026-10-26T17:11:36Z"
-    mac: ENC[AES256_GCM,data:yZjYQ/VWpQCWj2I+a8Ln9Y3LgOLc8QR2Bcv7Zbsk+oTZztQLkc7oud9rEo1oyWOff01kXjdZt3bX5bV6h7C+UNy506YG9b3heSmRp6nmyryohISLvUQEbEIjLQVgRsXcZQIyyjpPb3GzGjtRUXCSgEG78JD9pAs+u4acLcHzx40=,iv:k8GtibPpQWJ/3UNFifbm7d8J27BSzK6Tz7oztTxR4so=,tag:TGpdomcHMREfKpKm3fIbDQ==,type:str]
+    lastmodified: "2026-10-31T08:47:17Z"
+    mac: ENC[AES256_GCM,data:dXGnkHyknqYkYbFs1ZrDD4xIdoJYlvbiK2ZuMBfqtOs7iK3d8ZrJCqbOPCdSfqsy0GhRJ6I6zqamr1eImr+h0KJCy75CfzVpfF3HhX47hwIbfzZCJNBXsLB/Zd0GciWffOCDmRk5hodqnXXLR5JqB9FVuByXE0QvbSTxEC6OJ9I=,iv:f5TgnUaClKomcKXE1INumx/1xjG77bIiYnGp4HXfe/c=,tag:Rw4SDqnWIEi24jX8LmFu5Q==,type:str]
     unencrypted_suffix: _unencrypted
     version: 3.13.3

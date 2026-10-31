@@ -6,6 +6,24 @@ in
   flake.modules.nixos.tycho-microvms = { config, ... }:
   {
     sops.secrets.tailscale-vm-oauth = { };
+    sops.secrets.cloudflare-dns-api-token = { };
+    sops.secrets.pocket-id-encryption-key = { };
+
+    sops.templates."cloudflare-dns.env" = {
+      mode = "0400";
+
+      content = ''
+        CF_DNS_API_TOKEN=${config.sops.placeholder.cloudflare-dns-api-token}
+      '';
+    };
+
+    sops.templates."pocket-id.env" = {
+      mode = "0400";
+
+      content = ''
+        ENCRYPTION_KEY=${config.sops.placeholder.pocket-id-encryption-key}
+      '';
+    };
 
     microvm.vms = {
       anderson.config = {
@@ -20,8 +38,11 @@ in
       behemoth.config = {
         imports = [ flakeConfig.flake.modules.nixos.behemoth ];
 
-        microvm.credentialFiles.tailscale-vm-oauth =
-          "/run/credentials/microvm@behemoth.service/tailscale-vm-oauth";
+        microvm.credentialFiles = {
+          tailscale-vm-oauth = "/run/credentials/microvm@behemoth.service/tailscale-vm-oauth";
+          "cloudflare-dns.env" = "/run/credentials/microvm@behemoth.service/cloudflare-dns.env";
+          "pocket-id.env" = "/run/credentials/microvm@behemoth.service/pocket-id.env";
+        };
       };
     };
 
@@ -46,6 +67,8 @@ in
 
         serviceConfig.LoadCredential = [
           "tailscale-vm-oauth:${config.sops.secrets.tailscale-vm-oauth.path}"
+          "cloudflare-dns.env:${config.sops.templates."cloudflare-dns.env".path}"
+          "pocket-id.env:${config.sops.templates."pocket-id.env".path}"
         ];
       };
     };

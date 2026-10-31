@@ -20,7 +20,10 @@
       enable = true;
 
       networks.lan = {
-        matchConfig.Type = "ether";
+        matchConfig = {
+            Type = "ether";
+            Name = "en* eth*";
+          };
 
         networkConfig = {
           DHCP = lib.mkDefault "ipv4";
