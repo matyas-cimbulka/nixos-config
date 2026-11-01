@@ -50,6 +50,8 @@
             Name = "lan0";
           };
 
+        domains = [ "~internal.cimbulka.net" ];
+
         networkConfig = {
           DHCP = lib.mkDefault "ipv4";
         };

@@ -7,21 +7,7 @@
       oci-containers.backend = "docker";
     };
 
-    environment.etc."alloy/docker.alloy".text = ''
-      prometheus.exporter.cadvisor "docker" {
-        docker_host = "unix:///var/run/docker.sock"
-        docker_only = true
-        store_container_labels = false
-      }
-    '';
-
     systemd.services = {
-      alloy = {
-        after = [ "docker.service" ];
-
-        serviceConfig.SupplementaryGroups = [ "docker" ];
-      };
-
       docker-network-proxy = {
         description = "Create the Docker proxy network";
 

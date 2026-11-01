@@ -34,12 +34,11 @@
         }
         {
           job_name = "docker";
-          metrics_path = "/api/v0/component/prometheus.exporter.cadvisor.docker/metrics";
 
           static_configs = [
             {
               targets = [
-                "behemoth.internal.cimbulka.net:12345"
+                "behemoth.internal.cimbulka.net:8081"
               ];
             }
           ];
