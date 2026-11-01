@@ -9,6 +9,8 @@ in
     sops.secrets.cloudflare-dns-api-token = { };
     sops.secrets.pocket-id-encryption-key = { };
     sops.secrets.pocket-id-smtp-password = { };
+    sops.secrets.grafana-secret-key = { };
+    sops.secrets.grafana-oidc-client-secret = { };
 
     sops.templates."cloudflare-dns.env" = {
       mode = "0400";
@@ -45,7 +47,14 @@ in
         };
       };
 
-      thoth.config.imports = [ flakeConfig.flake.modules.nixos.thoth ];
+      thoth.config = {
+        imports = [ flakeConfig.flake.modules.nixos.thoth ];
+
+        microvm.credentialFiles = {
+          grafana-secret-key = "/run/credentials/microvm@thoth.service/grafana-secret-key";
+          grafana-oidc-client-secret = "/run/credentials/microvm@thoth.service/grafana-oidc-client-secret";
+        };
+      };
     };
 
     systemd.services = {
@@ -71,6 +80,16 @@ in
           "tailscale-vm-oauth:${config.sops.secrets.tailscale-vm-oauth.path}"
           "cloudflare-dns.env:${config.sops.templates."cloudflare-dns.env".path}"
           "pocket-id.env:${config.sops.templates."pocket-id.env".path}"
+        ];
+      };
+
+      "microvm@thoth" = {
+        requires = [ "sops-install-secrets.service" ];
+        after = [ "sops-install-secrets.service" ];
+
+        serviceConfig.LoadCredential = [
+          "grafana-secret-key:${config.sops.secrets.grafana-secret-key.path}"
+          "grafana-oidc-client-secret:${config.sops.secrets.grafana-oidc-client-secret.path}"
         ];
       };
     };

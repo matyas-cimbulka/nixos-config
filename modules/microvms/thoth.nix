@@ -7,7 +7,10 @@
       config.flake.modules.nixos.prometheus
       config.flake.modules.nixos.loki
       config.flake.modules.nixos.tempo
+      config.flake.modules.nixos.grafana
     ];
+
+    systemd.network.networks.lan.networkConfig.DNSDefaultRoute = true;
 
     networking = {
       hostName = "thoth";

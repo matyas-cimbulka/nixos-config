@@ -1,5 +1,25 @@
 {
-  flake.modules.nixos.traefik = {
+  flake.modules.nixos.traefik = { pkgs, ... }:
+  let
+    dynamicConfig = (pkgs.formats.yaml { }).generate "traefik-dynamic.yaml" {
+      http = {
+        routers.grafana = {
+          rule = "Host(`grafana.cimbulka.net`)";
+          entryPoints = [ "websecure" ];
+          service = "grafana";
+
+          tls.certResolver = "letsencrypt";
+        };
+
+        services.grafana.loadBalancer.servers = [
+          {
+            url = "http://thoth.internal.cimbulka.net:3000";
+          }
+        ];
+      };
+    };
+  in
+  {
     networking.firewall = {
         allowedTCPPorts = [ 80 443 8080 ];
 
@@ -16,9 +36,14 @@
 
       networks = [ "proxy" ];
 
+      extraOptions = [
+        "--dns=10.77.0.1"
+      ];
+
       volumes = [
         "/var/run/docker.sock:/var/run/docker.sock:ro"
         "traefik-acme:/letsencrypt"
+        "${dynamicConfig}:/etc/traefik/dynamic.yaml:ro"
       ];
 
       environmentFiles = [
@@ -41,6 +66,9 @@
         "--providers.docker=true"
         "--providers.docker.exposedbydefault=false"
         "--providers.docker.network=proxy"
+
+        "--providers.file.filename=/etc/traefik/dynamic.yaml"
+        "--providers.file.watch=false"
 
         "--entrypoints.web.address=:80"
         "--entrypoints.web.http.redirections.entryPoint.to=websecure"
