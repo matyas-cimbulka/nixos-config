@@ -6,7 +6,7 @@
         allowedTCPPorts = [ 53 ];
       };
 
-      "enp0s4".allowedTCPPorts = [ 80 443];
+      "lan0".allowedTCPPorts = [ 80 443];
     };
 
     environment.etc."resolv.conf".source =

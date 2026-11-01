@@ -1,19 +1,31 @@
 {
   flake.modules.nixos.tycho-network = {
-    systemd.network.networks.wan = {
-      matchConfig.PermanentMACAddress = "90:1b:0e:fc:ee:3d";
-      address = [
-        "188.40.66.246/32"
-      ];
+    systemd.network = {
+      links."10-wan" = {
+        matchConfig.PermanentMACAddress = "90:1b:0e:fc:ee:3d";
 
-      routes = [
-        {
-          Gateway = "188.40.66.193";
-          GatewayOnLink = true;
-        }
-      ];
+        linkConfig = {
+          NamePolicy = "";
+          Name = "wan0";
+        };
+      };
 
-      DHCP = "no";
+      networks.wan = {
+        matchConfig.PermanentMACAddress = "90:1b:0e:fc:ee:3d";
+
+        address = [
+          "188.40.66.246/32"
+        ];
+
+        routes = [
+          {
+            Gateway = "188.40.66.193";
+            GatewayOnLink = true;
+          }
+        ];
+
+        DHCP = "no";
+      };
     };
   };
 }

@@ -9,6 +9,7 @@ in
 
       flakeConfig.flake.modules.nixos.sops
       flakeConfig.flake.modules.nixos.tailscale-server
+      flakeConfig.flake.modules.nixos.alloy
     ];
     
     assertions = [

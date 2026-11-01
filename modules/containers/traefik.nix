@@ -1,7 +1,31 @@
 {
-  flake.modules.nixos.traefik = {
+  flake.modules.nixos.traefik = { pkgs, ... }:
+  let
+    dynamicConfig = (pkgs.formats.yaml { }).generate "traefik-dynamic.yaml" {
+      http = {
+        routers.grafana = {
+          rule = "Host(`grafana.cimbulka.net`)";
+          entryPoints = [ "websecure" ];
+          service = "grafana";
+
+          tls.certResolver = "letsencrypt";
+        };
+
+        services.grafana.loadBalancer.servers = [
+          {
+            url = "http://thoth.internal.cimbulka.net:3000";
+          }
+        ];
+      };
+    };
+  in
+  {
     networking.firewall = {
         allowedTCPPorts = [ 80 443 8080 ];
+
+        interfaces."docker-proxy".allowedTCPPorts = [
+          4318
+        ];
       };
 
     virtualisation.oci-containers.containers.traefik = {
@@ -12,9 +36,14 @@
 
       networks = [ "proxy" ];
 
+      extraOptions = [
+        "--dns=10.77.0.1"
+      ];
+
       volumes = [
         "/var/run/docker.sock:/var/run/docker.sock:ro"
         "traefik-acme:/letsencrypt"
+        "${dynamicConfig}:/etc/traefik/dynamic.yaml:ro"
       ];
 
       environmentFiles = [
@@ -38,6 +67,9 @@
         "--providers.docker.exposedbydefault=false"
         "--providers.docker.network=proxy"
 
+        "--providers.file.filename=/etc/traefik/dynamic.yaml"
+        "--providers.file.watch=false"
+
         "--entrypoints.web.address=:80"
         "--entrypoints.web.http.redirections.entryPoint.to=websecure"
         "--entrypoints.web.http.redirections.entryPoint.scheme=https"
@@ -51,16 +83,60 @@
         "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
         "--certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare"
         "--certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,1.0.0.1:53"
+
+        "--metrics.prometheus=true"
+        "--metrics.prometheus.entrypoint=traefik"
+        "--metrics.prometheus.addrouterslabels=true"
+
+        "--accesslog=true"
+        "--accesslog.format=json"
+        "--tracing.otlp.http=true"
+        "--tracing.otlp.http.endpoint=http://172.18.0.1:4318/v1/traces"
       ];
     };
 
-    systemd.services.docker-traefik = {
-      requires = [ "docker-network-proxy.service" ];
-      after = [ "docker-network-proxy.service" ];
+    systemd.services = {
+      alloy = {
+        requires = [ "docker-network-proxy.service" ];
+        after = [ "docker-network-proxy.service" ];
+      };
 
-      serviceConfig.ImportCredential = [
-        "cloudflare-dns.env"
-      ];
+      docker-traefik = {
+        requires = [ "docker-network-proxy.service" ];
+        after = [ "docker-network-proxy.service" ];
+
+        serviceConfig.ImportCredential = [
+          "cloudflare-dns.env"
+        ];
+      };
     };
+
+    environment.etc."alloy/traces.alloy".text = ''
+      otelcol.receiver.otlp "docker" {
+        http {
+          endpoint = "172.18.0.1:4318"
+        }
+
+        output {
+          traces = [ otelcol.processor.batch.traces.input ]
+        }
+      }
+
+      otelcol.processor.batch "traces" {
+        output {
+          traces = [ otelcol.exporter.otlp.tempo.input ]
+        }
+      }
+
+      otelcol.exporter.otlp "tempo" {
+        client {
+          endpoint = "thoth.internal.cimbulka.net:4317"
+          
+          tls {
+            insecure = true
+          }
+        }
+      }
+    '';
   };
 }

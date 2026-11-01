@@ -3,6 +3,8 @@
   flake.modules.nixos.microvm-profile = {
     imports = [
       config.flake.modules.nixos.base-profile
+
+      config.flake.modules.nixos.alloy
     ];
 
     microvm = {
@@ -24,16 +26,31 @@
       ];
     };
 
-    networking.useDHCP = false;
+    networking = {
+      useDHCP = false;
+
+      firewall.interfaces."lan0".allowedTCPPorts = [ 12345 ];
+    };
 
     systemd.network = {
       enable = true;
 
+      links."10-lan" = {
+        matchConfig.Driver = "virtio_net";
+
+        linkConfig = {
+          NamePolicy = "";
+          Name = "lan0";
+        };
+      };
+
       networks.lan = {
         matchConfig = {
             Type = "ether";
-            Name = "en* eth*";
+            Name = "lan0";
           };
+
+        domains = [ "~internal.cimbulka.net" ];
 
         networkConfig = {
           DHCP = lib.mkDefault "ipv4";

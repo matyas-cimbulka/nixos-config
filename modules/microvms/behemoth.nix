@@ -6,6 +6,7 @@
 
       config.flake.modules.nixos.tailscale-microvm
       config.flake.modules.nixos.docker
+      config.flake.modules.nixos.cadvisor
 
       config.flake.modules.nixos.traefik
       config.flake.modules.nixos.pocket-id
@@ -40,6 +41,7 @@
     };
 
     networking.hostName = "behemoth";
+
     services.openssh = {
       enable = true;
 
