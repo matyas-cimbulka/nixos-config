@@ -29,10 +29,19 @@
     systemd.network = {
       enable = true;
 
+      links."10-lan" = {
+        matchConfig.Driver = "virtio_net";
+
+        linkConfig = {
+          NamePolicy = "";
+          Name = "lan0";
+        };
+      };
+
       networks.lan = {
         matchConfig = {
             Type = "ether";
-            Name = "en* eth*";
+            Name = "lan0";
           };
 
         networkConfig = {

@@ -28,7 +28,7 @@
       nat = {
         enable = true;
 
-        externalInterface = "enp0s31f6";
+        externalInterface = "wan0";
         internalInterfaces = [ "microvm-br" ];
       };
 
