@@ -3,9 +3,15 @@
   flake.modules.nixos.thoth = {
     imports = [
       config.flake.modules.nixos.microvm-profile
+
+      config.flake.modules.nixos.prometheus
     ];
 
-    networking.hostName = "thoth";
+    networking = {
+      hostName = "thoth";
+
+      firewall.interfaces."lan0".allowedTCPPorts = [ 9090 ];
+    };
 
     microvm = {
       hypervisor = "qemu";
