@@ -5,6 +5,7 @@
       config.flake.modules.nixos.microvm-profile
 
       config.flake.modules.nixos.prometheus
+      config.flake.modules.nixos.loki
     ];
 
     networking = {
@@ -49,6 +50,20 @@
           size = 30720;
         }
       ];
+    };
+
+    services.openssh = {
+      enable = true;
+
+      settings.PasswordAuthentication = true;
+    };
+
+    users.users.test = {
+      isNormalUser = true;
+
+      password = "password";
+
+      extraGroups = [ "wheel" ];
     };
   };
 }
