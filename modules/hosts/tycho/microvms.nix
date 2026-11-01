@@ -44,6 +44,8 @@ in
           "pocket-id.env" = "/run/credentials/microvm@behemoth.service/pocket-id.env";
         };
       };
+
+      thoth.config.imports = [ flakeConfig.flake.modules.nixos.thoth ];
     };
 
     systemd.services = {
