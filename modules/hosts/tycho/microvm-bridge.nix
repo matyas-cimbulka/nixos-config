@@ -34,7 +34,7 @@
 
       firewall.interfaces."microvm-br" = {
         allowedUDPPorts = [ 53 67 ];
-        allowedTCPPorts = [ 53 ];
+        allowedTCPPorts = [ 53 12345 ];
       };
     };
 
@@ -59,6 +59,11 @@
 
           domain = "internal.cimbulka.net";
           local = "/internal.cimbulka.net/";
+
+          cname = [
+            "id.cimbulka.net,behemoth.internal.cimbulka.net"
+            "grafana.cimbulka.net,behemoth.internal.cimbulka.net"
+          ];
 
           dhcp-fqdn = true;
           domain-needed = true;

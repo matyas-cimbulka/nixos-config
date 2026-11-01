@@ -40,6 +40,7 @@
     };
 
     networking.hostName = "behemoth";
+
     services.openssh = {
       enable = true;
 

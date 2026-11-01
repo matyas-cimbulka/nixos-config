@@ -34,8 +34,6 @@ in
         microvm.credentialFiles.tailscale-vm-oauth =
           "/run/credentials/microvm@anderson.service/tailscale-vm-oauth";
       };
-
-      test-microvm.config.imports = [ flakeConfig.flake.modules.nixos.test-microvm ];
       
       behemoth.config = {
         imports = [ flakeConfig.flake.modules.nixos.behemoth ];

@@ -3,6 +3,8 @@
   flake.modules.nixos.microvm-profile = {
     imports = [
       config.flake.modules.nixos.base-profile
+
+      config.flake.modules.nixos.alloy
     ];
 
     microvm = {
@@ -24,7 +26,11 @@
       ];
     };
 
-    networking.useDHCP = false;
+    networking = {
+      useDHCP = false;
+
+      firewall.interfaces."lan0".allowedTCPPorts = [ 12345 ];
+    };
 
     systemd.network = {
       enable = true;
