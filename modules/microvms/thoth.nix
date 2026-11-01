@@ -6,6 +6,7 @@
 
       config.flake.modules.nixos.prometheus
       config.flake.modules.nixos.loki
+      config.flake.modules.nixos.tempo
     ];
 
     networking = {
