@@ -2,10 +2,7 @@
 {
   flake.modules.nixos.base-profile = {
     nix = {
-      settings.experimental-features = [
-        "nix-command"
-        "flakes"
-      ];
+      settings.experimental-features = [ "nix-command" "flakes" ];
 
       gc = {
         automatic = true;
@@ -13,8 +10,6 @@
         options = lib.mkDefault "--delete-older-than 15d";
       };
     };
-
-    boot.loader.grub.configurationLimit = lib.mkDefault 10;
 
     time = {
       timeZone = lib.mkDefault "UTC";

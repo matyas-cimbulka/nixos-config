@@ -109,6 +109,11 @@ modules may still need cleanup to follow them.
   configuration for identical tools and settings, replacing the guest test setup.
 - Each system has independent home-directory state. Do not share the host's
   `/home/matyas` with guests.
+- The Matyas account on infrastructure guests is for debugging. Its home is
+  intentionally ephemeral; shared tools and settings are recreated declaratively.
+- Persist SSH host keys independently of user homes so a guest retains its SSH
+  identity across reboots. An ephemeral home does not imply an ephemeral host
+  identity.
 - MicroVM platform configuration handles guest-specific networking, store sharing,
   and persistence. Deployment profiles supply instance-specific values and storage
   assignments. Secret delivery may differ between host and guest.

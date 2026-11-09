@@ -12,7 +12,7 @@
 
           addresses = [
             {
-              addressConfig.Address = "10.77.0.1/24";
+              Address = "10.77.0.1/24";
             }
           ];
         };
@@ -34,7 +34,7 @@
 
       firewall.interfaces."microvm-br" = {
         allowedUDPPorts = [ 53 67 ];
-        allowedTCPPorts = [ 53 12345 ];
+        allowedTCPPorts = [ 53 ];
       };
     };
 
@@ -51,11 +51,7 @@
           bind-dynamic = true;
 
           dhcp-range = [ "10.77.0.10,10.77.0.254,255.255.255.0,12h" ];
-          dhcp-option = [
-            "option:router,10.77.0.1"
-            "option:dns-server,10.77.0.1"
-            "option:domain-name"
-          ];
+          dhcp-option = [ "option:router,10.77.0.1" "option:dns-server,10.77.0.1" "option:domain-name" ];
 
           domain = "internal.cimbulka.net";
           local = "/internal.cimbulka.net/";
@@ -70,16 +66,11 @@
           no-hosts = true;
 
           no-resolv = true;
-          server = [
-            "1.1.1.1"
-            "1.0.0.1"
-          ];
+          server = [ "1.1.1.1" "1.0.0.1" ];
         };
       };
 
-      tailscale.extraSetFlags = [
-        "--accept-dns=false"
-      ];
+      tailscale.extraSetFlags = [ "--accept-dns=false" ];
     };
   };
 }

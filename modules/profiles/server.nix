@@ -1,30 +1,17 @@
 { config, lib, ... }:
-let
-  flakeConfig = config;
-in
 {
-  flake.modules.nixos.server-profile = { config, ... }: {
+  flake.modules.nixos.server-profile = {
     imports = [
-      flakeConfig.flake.modules.nixos.base-profile
+      config.flake.modules.nixos.base-profile
+      config.flake.modules.nixos.matyas
 
-      flakeConfig.flake.modules.nixos.sops
-      flakeConfig.flake.modules.nixos.tailscale-server
-      flakeConfig.flake.modules.nixos.alloy
-    ];
-    
-    assertions = [
-      {
-        assertion = config.networking.nameservers != [ ];
-        message = "The server profile requires explicit networking.nameservers";
-      }
+      config.flake.modules.nixos.alloy
     ];
 
     security.sudo = {
       execWheelOnly = true;
       wheelNeedsPassword = false;
     };
-
-    boot.loader.grub.configurationLimit = 15;
 
     networking = {
       firewall.enable = lib.mkDefault true;
@@ -37,12 +24,12 @@ in
 
     services.openssh = {
       enable = true;
-      
+
       settings = {
         PermitRootLogin = "no";
         PasswordAuthentication = false;
         KbdInteractiveAuthentication = false;
-        
+
         LoginGraceTime = 30;
         MaxAuthTries = 3;
       };

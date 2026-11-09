@@ -1,32 +1,61 @@
 { inputs, config, ... }:
+let
+  flakeConfig = config;
+in
 {
-  flake.nixosConfigurations.tycho = inputs.nixpkgs.lib.nixosSystem {
-    modules = [
-      inputs.microvm.nixosModules.host
-      config.flake.modules.nixos.tycho
-    ];
-  };
-
-  flake.modules.nixos.tycho = {
-    imports = [
-      config.flake.modules.nixos.tycho-disko
-      config.flake.modules.nixos.tycho-network
-      config.flake.modules.nixos.tycho-microvm-bridge
-      config.flake.modules.nixos.tycho-microvms
-
-      config.flake.modules.nixos.server-profile
-    ];
-
-    hardware.facter = {
-      reportPath = ./facter.json;
-
-      detected.dhcp.enable = false;
+  flake = {
+    nixosConfigurations.tycho = inputs.nixpkgs.lib.nixosSystem {
+      modules = [
+        inputs.microvm.nixosModules.host
+        config.flake.modules.nixos.tycho
+      ];
     };
 
-    networking.hostName = "tycho";
+    modules.nixos.tycho = { config, lib, ... }: {
+      imports = [
+        flakeConfig.flake.modules.nixos.tycho-disko
+        flakeConfig.flake.modules.nixos.tycho-network
+        flakeConfig.flake.modules.nixos.tycho-microvm-bridge
+        flakeConfig.flake.modules.nixos.tycho-microvms
 
-    sops.defaultSopsFile = ./sops.yaml;
+        flakeConfig.flake.modules.nixos.server-profile
+        flakeConfig.flake.modules.nixos.sops
+        flakeConfig.flake.modules.nixos.tailscale-server
+      ];
 
-    system.stateVersion = "26.05";
+      hardware.facter = {
+        reportPath = ./facter.json;
+
+        detected.dhcp.enable = false;
+      };
+
+      networking.hostName = "tycho";
+
+      sops = {
+        defaultSopsFile = ./sops.yaml;
+        age.keyFile = "/var/lib/sops-nix/key.txt";
+        secrets.tailscale-server-oauth = { };
+      };
+
+      services.tailscale.authKeyFile = config.sops.secrets.tailscale-server-oauth.path;
+
+      deployment = {
+        tailscale = {
+          interfaces = [ "wan0" "microvm-br" ];
+          metricsInterfaces = [ "microvm-br" ];
+        };
+        alloy = {
+          httpInterfaces = [ "microvm-br" ];
+          lokiEndpoint = "http://thoth.internal.cimbulka.net:3100/loki/api/v1/push";
+        };
+      };
+
+      systemd.services.tailscaled-autoconnect = lib.mkIf config.services.tailscale.enable {
+        requires = [ "sops-install-secrets.service" ];
+        after = [ "sops-install-secrets.service" ];
+      };
+
+      system.stateVersion = "26.05";
+    };
   };
 }
