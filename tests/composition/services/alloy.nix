@@ -65,6 +65,8 @@ let
 in
 {
   flake.lib.compositionTests.alloy = {
+    explicit-empty-http-interfaces-is-accepted = check "An explicit empty Alloy interface list should contribute no openings."
+      ((extend alloyOnly { deployment.alloy.httpInterfaces = lib.mkForce []; }).config.networking.firewall.interfaces == {});
     trace-receiver-follows-final-container-config = check "Alloy should create its shared receiver for a native OCI sender declaration."
       (lib.hasInfix "172.30.0.1:4318" receiver.config.environment.etc."alloy/traces.alloy".text
         && lib.hasInfix "tempo.example.invalid:4317" receiver.config.environment.etc."alloy/traces.alloy".text

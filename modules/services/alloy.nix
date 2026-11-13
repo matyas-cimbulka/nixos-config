@@ -23,6 +23,7 @@ in
       options.deployment.alloy = {
         httpInterfaces = lib.mkOption {
           type = lib.types.listOf lib.types.str;
+          default = throw "Set deployment.alloy.httpInterfaces explicitly; use [] for no interface openings.";
           description = "Interfaces permitted to access Alloy's HTTP API and exporter metrics.";
         };
         httpPort = lib.mkOption {

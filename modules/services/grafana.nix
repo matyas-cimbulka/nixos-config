@@ -29,6 +29,7 @@
       options.deployment.grafana = {
         interfaces = lib.mkOption {
           type = lib.types.listOf lib.types.str;
+          default = throw "Set deployment.grafana.interfaces explicitly; use [] for no interface openings.";
           description = "Interfaces permitted to access Grafana HTTP.";
         };
         domain = lib.mkOption {

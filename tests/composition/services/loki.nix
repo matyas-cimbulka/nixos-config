@@ -11,6 +11,8 @@ let
 in
 {
   flake.lib.compositionTests.loki = {
+    explicit-empty-interfaces-is-accepted = check "An explicit empty Loki interface list should contribute no openings."
+      ((extend active { deployment.loki.interfaces = lib.mkForce []; }).config.networking.firewall.interfaces == {});
     enables-service = check "The Loki feature should enable Loki." active.config.services.loki.enable;
     interface-specific-port = check "Loki HTTP should open only on its configured interface."
       (builtins.elem 3100 (ports active "logs0") && active.config.networking.firewall.allowedTCPPorts == []);

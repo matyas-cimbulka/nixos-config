@@ -25,6 +25,8 @@ let
 in
 {
   flake.lib.compositionTests.tempo = {
+    explicit-empty-interfaces-is-accepted = check "Explicit empty Tempo interface lists should contribute no API or OTLP openings."
+      ((extend active { deployment.tempo = { apiInterfaces = lib.mkForce []; otlpInterfaces = lib.mkForce []; }; }).config.networking.firewall.interfaces == {});
     enables-service = check "Importing the Tempo feature should enable Tempo." selected.config.services.tempo.enable;
     separates-api-and-ingestion = check "Tempo API and OTLP exposure should use independent interfaces."
       (ports active "api0" == [ 3200 ] && ports active "ingest0" == [ 4317 ]

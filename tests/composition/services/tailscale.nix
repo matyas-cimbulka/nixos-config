@@ -27,6 +27,9 @@ let
 in
 {
   flake.lib.compositionTests.tailscale = {
+    explicit-empty-transport-interfaces-is-accepted = check "Explicit empty Tailscale transport interfaces should preserve metrics without UDP openings."
+      (let empty = extend active { deployment.tailscale.interfaces = lib.mkForce []; };
+       in udp empty "transport0" == [] && ports empty "metrics0" == [ 9250 ]);
     enables-service = check "The Tailscale feature should enable tailscaled." active.config.services.tailscale.enable;
     separates-transport-and-metrics = check "Tailscale UDP transport and TCP metrics should use their selected interfaces."
       (udp active "transport0" == [ active.config.services.tailscale.port ]

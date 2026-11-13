@@ -8,6 +8,7 @@
       options.deployment.tailscale-dns = {
         dnsInterfaces = lib.mkOption {
           type = lib.types.listOf lib.types.str;
+          default = throw "Set deployment.tailscale-dns.dnsInterfaces explicitly; use [] for no DNS interface openings.";
           description = "Interfaces permitted to send DNS queries.";
         };
         dnsPort = lib.mkOption {
@@ -17,6 +18,7 @@
         };
         metricsInterfaces = lib.mkOption {
           type = lib.types.listOf lib.types.str;
+          default = throw "Set deployment.tailscale-dns.metricsInterfaces explicitly, or set overrideMetricsIntegration = true.";
           description = "Interfaces permitted to reach Blocky HTTP/HTTPS metrics.";
         };
         metricsHttpPort = lib.mkOption {
@@ -36,6 +38,7 @@
         };
         upstreams = lib.mkOption {
           type = lib.types.listOf lib.types.str;
+          default = throw "Set deployment.tailscale-dns.upstreams explicitly.";
           description = "Upstream DNS servers.";
         };
         mappings = lib.mkOption {

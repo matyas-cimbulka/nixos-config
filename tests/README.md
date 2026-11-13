@@ -10,7 +10,7 @@ Checks are registered on the derivation's build platform. Current targets are:
 - `build-guest-tycho-anderson`, `build-guest-tycho-behemoth`, `build-guest-tycho-thoth`
 - `build-home-matyas-server`
 
-Run all build targets, independently of the known failing composition tests:
+Run all build targets independently of the evaluation suites:
 
 ```sh
 nix build --no-link --keep-going .#checks.x86_64-linux.build-all
@@ -29,8 +29,8 @@ actual system and Home Manager artifacts. A cached result is a successful
 realization; it does not mean the output was rebuilt locally.
 
 `nix flake check` includes these builds. `nix flake check --no-build` only evaluates
-them. Known composition failures can still stop the full command, so use the
-targeted build commands while those failures remain unresolved.
+them. Evaluation failures can stop the full command before builds run; targeted
+build commands are useful when diagnosing a separate evaluation failure.
 
 Builds do not activate Home Manager, switch the host, install a bootloader, start
 VMs, decrypt production secrets, or contact application APIs. They may download
@@ -81,8 +81,7 @@ nix build --no-link .#checks.x86_64-linux.deployment-tycho \
 
 These checks force the existing evaluation assertions and build only success
 markers. They do not build or activate systems, read secret contents, or verify
-runtime credential delivery. They also run with `nix flake check`; unrelated known
-composition failures still cause that command to fail.
+runtime credential delivery. They also run with `nix flake check`.
 
 To collect results even when individual assertions fail:
 
@@ -212,10 +211,8 @@ standalone tool selection, shared profile membership, shell integration, and the
 unauthenticated VCS baseline; deferred development credential providers are not
 implemented or tested.
 
-Failures are kept as ordinary failing expectations for a later bug-fix pass.
-They are not skipped or treated as expected successes. See
-[known-failures.md](known-failures.md) for the recorded findings. Inspect one
-failing test directly for its error, for example:
+Failures remain ordinary failing expectations until fixed; they are not skipped
+or treated as expected successes. Run one regression test directly, for example:
 
 ```sh
 nix eval --json .#lib.compositionTests.alloy.active-alloy-requires-http-interfaces

@@ -44,6 +44,8 @@ let
 in
 {
   flake.lib.compositionTests.grafana = {
+    explicit-empty-interfaces-is-accepted = check "An explicit empty Grafana interface list should contribute no openings."
+      ((extend active { deployment.grafana.interfaces = lib.mkForce []; }).config.networking.firewall.interfaces == {});
     enables-service = check "The Grafana feature should enable Grafana." active.config.services.grafana.enable;
     uses-domain-and-runtime-key = check "Grafana should consume deployment domain and runtime secret references."
       (active.config.services.grafana.settings.server.root_url == "https://grafana.example.invalid"

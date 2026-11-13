@@ -40,6 +40,7 @@
         };
         trustedProxies = lib.mkOption {
           type = lib.types.listOf lib.types.str;
+          default = throw "Set deployment.pocket-id.trustedProxies explicitly; use [] to trust no proxy.";
           description = "Trusted reverse-proxy addresses or CIDR ranges. An empty list trusts no proxy.";
         };
         dataVolume = lib.mkOption {

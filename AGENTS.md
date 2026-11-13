@@ -40,13 +40,13 @@ target architecture; existing code may not yet follow it.
   failing test that reproduces the issue satisfies this first step.
 - Make the smallest configuration change that turns the focused test green.
   Re-run the affected suite and the composition suite, checking for regressions
-  against the recorded baseline. Refactor only while preserving those results.
+  against the results before the change. Refactor only while preserving those results.
 - Test the intended behavior through the real modules and merged configuration.
   Do not weaken or skip expectations merely to make the suite pass. Separate
   mistakes in test fixtures from actual configuration failures.
 - Keep unrelated known failures visible and report them separately from new
-  failures. Update [the findings inventory](tests/known-failures.md) when fixes
-  change the baseline; do not expand a focused change to fix unrelated findings.
+  failures; do not expand a focused change to fix unrelated findings.
+- Keep resolved failure history in Git rather than separate inventory files.
 - For documentation, formatting, and behavior-preserving reorganizations, use
   appropriate existing checks and output comparisons rather than inventing a
   failing test. Choose build or runtime tests when evaluation cannot establish

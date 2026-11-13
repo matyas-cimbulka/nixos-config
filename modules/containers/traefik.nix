@@ -37,6 +37,7 @@
     {
       options.deployment.traefik = {
         portsByInterface = lib.mkOption {
+          default = throw "Set deployment.traefik.portsByInterface explicitly; use {} to publish no ports.";
           type = lib.types.attrsOf (
             lib.types.listOf (
               lib.types.enum [ 80 443 8080 ]

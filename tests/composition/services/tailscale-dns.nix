@@ -27,6 +27,8 @@ let
 in
 {
   flake.lib.compositionTests.tailscale-dns = {
+    explicit-empty-interfaces-is-accepted = check "Explicit empty Blocky interface lists should contribute no DNS or metrics openings."
+      ((extend active { deployment.tailscale-dns = { dnsInterfaces = lib.mkForce []; metricsInterfaces = lib.mkForce []; }; }).config.networking.firewall.interfaces == {});
     enables-blocky = check "The DNS feature should enable Blocky." active.config.services.blocky.enable;
     requires-tailscale = check "The DNS feature should assert its Tailscale requirement."
       (failedAssertion noTailscale "The Tailscale DNS feature requires Tailscale.");

@@ -13,6 +13,7 @@ in
         options.deployment.tailscale = {
           interfaces = lib.mkOption {
             type = lib.types.listOf lib.types.str;
+            default = throw "Set deployment.tailscale.interfaces explicitly; use [] for no transport interface openings.";
             description = "Incoming interfaces permitted to reach Tailscale's UDP transport port.";
           };
           metricsInterfaces = lib.mkOption {

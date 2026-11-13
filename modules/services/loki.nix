@@ -9,6 +9,7 @@
       options.deployment.loki = {
         interfaces = lib.mkOption {
           type = lib.types.listOf lib.types.str;
+          default = throw "Set deployment.loki.interfaces explicitly; use [] for no interface openings.";
           description = "Interfaces permitted to reach Loki HTTP ingestion and queries.";
         };
       };

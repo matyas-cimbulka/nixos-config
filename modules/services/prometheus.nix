@@ -24,6 +24,7 @@
       options.deployment.prometheus = {
         interfaces = lib.mkOption {
           type = lib.types.listOf lib.types.str;
+          default = throw "Set deployment.prometheus.interfaces explicitly; use [] for no interface openings.";
           description = "Interfaces permitted to reach the Prometheus API.";
         };
         systemTargets = lib.mkOption {

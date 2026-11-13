@@ -34,6 +34,11 @@ let
 in
 {
   flake.lib.compositionTests.traefik = {
+    explicit-empty-exposure-publishes-no-ports = check "An explicit empty Traefik exposure selection should publish no ports and retain drop rules."
+      (let empty = extend active { deployment.traefik.portsByInterface = lib.mkForce {}; };
+       in (container empty).ports == [] && empty.config.networking.firewall.interfaces == {}
+         && lib.all (port: lib.hasInfix "tcp dport ${toString port} counter drop"
+           empty.config.networking.nftables.tables.traefik-exposure.content) [ 80 443 8080 ]);
     publishes-only-selected-ports = check "Traefik should publish the unique union of explicitly permitted ports."
       (lib.sort builtins.lessThan (container active).ports == [ "443:443" "8080:8080" "80:80" ]);
     firewall-follows-per-interface-selection = check "Traefik firewall openings should preserve per-interface port selection."

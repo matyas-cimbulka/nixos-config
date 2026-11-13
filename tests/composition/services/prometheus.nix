@@ -19,6 +19,8 @@ let
 in
 {
   flake.lib.compositionTests.prometheus = {
+    explicit-empty-interfaces-is-accepted = check "An explicit empty Prometheus interface list should contribute no openings."
+      ((extend active { deployment.prometheus.interfaces = lib.mkForce []; }).config.networking.firewall.interfaces == {});
     enables-service = check "The Prometheus feature should enable Prometheus." active.config.services.prometheus.enable;
     interface-specific-port = check "Prometheus should open its API only on deployment interfaces."
       (ports active "metrics0" == [ 9090 ] && active.config.networking.firewall.allowedTCPPorts == []);

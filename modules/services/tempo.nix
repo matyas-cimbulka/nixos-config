@@ -8,10 +8,12 @@
       options.deployment.tempo = {
         apiInterfaces = lib.mkOption {
           type = lib.types.listOf lib.types.str;
+          default = throw "Set deployment.tempo.apiInterfaces explicitly; use [] for no API interface openings.";
           description = "Interfaces permitted to reach Tempo HTTP queries and metrics.";
         };
         otlpInterfaces = lib.mkOption {
           type = lib.types.listOf lib.types.str;
+          default = throw "Set deployment.tempo.otlpInterfaces explicitly; use [] for no OTLP interface openings.";
           description = "Interfaces permitted to reach Tempo OTLP gRPC ingestion.";
         };
         otlpPort = lib.mkOption {
