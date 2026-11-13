@@ -1,4 +1,67 @@
-# Composition tests
+# Configuration tests
+
+## Deployment tests
+
+`deployment/default.nix` discovers deployment suite modules and registers
+`deployment-<suite>` checks on Tycho's target platform. `deployment/tycho.nix`
+evaluates the actual host, all configured guests, and standalone Home Manager.
+Guest evaluation tests are discovered from Tycho's VM definitions and exposed as
+the `guests` group. Machine suites own the other deployment relationships:
+
+- `tycho.nix`: expected VM membership, matching guest/TAP identities, bridge/NAT
+  and DHCP/DNS wiring, startup dependencies, and ephemeral debugging homes.
+- `behemoth.nix`: Traefik, Pocket ID, and Tailscale credential chains; ingress
+  exposure; co-located Pocket ID routing; telemetry senders; remote Grafana routing.
+- `anderson.nix`: Tailscale credentials, DNS/metrics exposure, resolver settings,
+  and public versus internal DNS destinations.
+- `thoth.nix`: Grafana signing/OAuth credentials and OAuth endpoints, local data
+  sources, remote scrape targets and exporter ports, Loki/Tempo forwarding, and
+  internal monitoring exposure.
+
+`deployment/helpers.nix` supplies small assertion and configuration lookup helpers.
+It is excluded from automatic module discovery. Credential checks explicitly name
+the intended source, VM, service, and actual application references. The helper
+checks host loading, VM forwarding, guest import, consumed paths, and host startup
+dependencies. Grafana references are checked in their `$__file{...}` form. Template
+checks inspect SOPS placeholders, not decrypted values.
+
+Tests compare consumers with producer settings where practical. Independent policy
+expectations pin the three intended guests, Traefik's current LAN/Tailscale port
+selection (including dashboard port 8080 for debugging), and the configured ingress
+tailnet IP. That IP's actual ownership still requires a live check.
+
+```sh
+nix eval --json .#lib.deploymentTests
+nix eval --json .#lib.deploymentTests.behemoth
+nix eval --json .#lib.deploymentTests.thoth
+nix build --no-link .#checks.x86_64-linux.deployment-tycho \
+  .#checks.x86_64-linux.deployment-guests \
+  .#checks.x86_64-linux.deployment-behemoth \
+  .#checks.x86_64-linux.deployment-anderson \
+  .#checks.x86_64-linux.deployment-thoth
+```
+
+These checks force the existing evaluation assertions and build only success
+markers. They do not build or activate systems, read secret contents, or verify
+runtime credential delivery. They also run with `nix flake check`; unrelated known
+composition failures still cause that command to fail.
+
+To collect results even when individual assertions fail:
+
+```sh
+nix eval --json .#lib.deploymentTests --apply '
+  suites: builtins.mapAttrs
+    (_: tests: builtins.mapAttrs
+      (_: result: (builtins.tryEval (builtins.deepSeq result true)).success)
+      tests)
+    suites
+'
+```
+
+As with composition diagnostics, `false` is a failing test, not an expected-success
+exception. Some evaluation errors are not caught by `tryEval`.
+
+## Composition tests
 
 Run all composition assertions or one suite from the repository root:
 

@@ -8,6 +8,7 @@ inputs.flake-parts.lib.mkFlake { inherit inputs; } {
     ((import inputs.import-tree).filterNot (lib.hasSuffix ".pkgs.nix") ./modules)
     inputs.flake-parts.flakeModules.touchup
     ./tests/composition
+    ./tests/deployment
   ];
   touchup.attr.modules.enable = false;
   _module.args.rootPath = ./.;
