@@ -9,6 +9,7 @@ inputs.flake-parts.lib.mkFlake { inherit inputs; } {
     inputs.flake-parts.flakeModules.touchup
     ./tests/composition
     ./tests/deployment
+    ./tests/builds
   ];
   touchup.attr.modules.enable = false;
   _module.args.rootPath = ./.;

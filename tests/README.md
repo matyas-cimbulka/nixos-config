@@ -1,5 +1,43 @@
 # Configuration tests
 
+## Full builds
+
+`builds/default.nix` registers actual output derivations under `checks`, discovered
+from `nixosConfigurations`, their MicroVM definitions, and `homeConfigurations`.
+Checks are registered on the derivation's build platform. Current targets are:
+
+- `build-host-tycho`
+- `build-guest-tycho-anderson`, `build-guest-tycho-behemoth`, `build-guest-tycho-thoth`
+- `build-home-matyas-server`
+
+Run all build targets, independently of the known failing composition tests:
+
+```sh
+nix build --no-link --keep-going .#checks.x86_64-linux.build-all
+```
+
+Or build one output:
+
+```sh
+nix build --no-link .#checks.x86_64-linux.build-guest-tycho-behemoth
+```
+
+`build-all` is a link farm referencing every registered build output. Building it
+requires those outputs to be realized, either built locally or obtained from a
+binary cache. Unlike evaluation-check success markers, these checks cover the
+actual system and Home Manager artifacts. A cached result is a successful
+realization; it does not mean the output was rebuilt locally.
+
+`nix flake check` includes these builds. `nix flake check --no-build` only evaluates
+them. Known composition failures can still stop the full command, so use the
+targeted build commands while those failures remain unresolved.
+
+Builds do not activate Home Manager, switch the host, install a bootloader, start
+VMs, decrypt production secrets, or contact application APIs. They may download
+dependencies. Runtime-pulled Docker images are not fetched or tested by these
+system builds. VM boot, networking, credential delivery, and application behavior
+remain separate runtime checks.
+
 ## Deployment tests
 
 `deployment/default.nix` discovers deployment suite modules and registers
@@ -82,8 +120,8 @@ nix build --no-link .#checks.x86_64-linux.composition-docker
 
 `--no-build` evaluates flake outputs and the composition assertions. The full
 check command also builds registered checks. A composition check's build only
-creates a success marker; it does not build the fixture systems. Future system
-builds and VM tests registered under `checks` will also run with the full command.
+creates a success marker; it does not build the fixture systems. The system builds
+registered above also run with the full command, as will future registered VM tests.
 The targeted `nix eval` commands evaluate only the requested test results.
 
 Every named test should return `true`. A failed expectation stops evaluation with
