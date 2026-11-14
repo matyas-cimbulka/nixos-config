@@ -7,6 +7,7 @@ inputs.flake-parts.lib.mkFlake { inherit inputs; } {
     inputs.flake-parts.flakeModules.modules
     ((import inputs.import-tree).filterNot (lib.hasSuffix ".pkgs.nix") ./modules)
     inputs.flake-parts.flakeModules.touchup
+    inputs.home-manager.flakeModules.home-manager
     ./tests/composition
     ./tests/deployment
     ./tests/builds

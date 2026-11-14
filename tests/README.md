@@ -9,6 +9,7 @@ Checks are registered on the derivation's build platform. Current targets are:
 - `build-host-tycho`
 - `build-guest-tycho-anderson`, `build-guest-tycho-behemoth`, `build-guest-tycho-thoth`
 - `build-home-matyas-server`
+- `build-home-matyas-workstation`
 
 Run all build targets independently of the evaluation suites:
 
@@ -151,7 +152,7 @@ composition/
   services/       # One suite per service; integrations follow their owner.
   containers/     # Traefik and Pocket ID, including network and tracing integration.
   platforms/      # MicroVM networking, store sharing, and persistent SSH identity.
-  profiles/       # Base and server policy composition.
+  profiles/       # Base, server, and workstation policy composition.
   users/          # Matyas account and independence from Home Manager and server policy.
   home/           # CLI groups, home profiles, and vcs/{git,jujutsu}.nix.
 ```
@@ -170,6 +171,9 @@ configuration; a fixture's `.config` is a separate NixOS configuration.
 - `services/docker.nix` owns Docker defaults and overrides.
 - `services/home-manager.nix` owns shared package policy and delivery for multiple
   users; `profiles/server.nix` owns selection of the Matyas server home and tools.
+- `profiles/workstation.nix` owns workstation Home Manager selection, NetworkManager
+  ownership and user access, password-protected sudo, overridable network defaults,
+  and independence from server and deployment services.
 - `services/alloy.nix` owns Alloy settings, Loki integration, the shared trace
   receiver, and automatic cAdvisor
   integration with Docker, including its opt-outs and supporting configuration.
