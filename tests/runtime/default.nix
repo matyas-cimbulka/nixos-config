@@ -1,0 +1,3 @@
+{
+  imports = [ ./pella-storage.nix ];
+}

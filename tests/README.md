@@ -7,6 +7,7 @@ from `nixosConfigurations`, their MicroVM definitions, and `homeConfigurations`.
 Checks are registered on the derivation's build platform. Current targets are:
 
 - `build-host-tycho`
+- `build-host-pella`
 - `build-guest-tycho-anderson`, `build-guest-tycho-behemoth`, `build-guest-tycho-thoth`
 - `build-home-matyas-server`
 - `build-home-matyas-workstation`
@@ -56,6 +57,9 @@ the `guests` group. Machine suites own the other deployment relationships:
 - `thoth.nix`: Grafana signing/OAuth credentials and OAuth endpoints, local data
   sources, remote scrape targets and exporter ports, Loki/Tempo forwarding, and
   internal monitoring exposure.
+- `pella.nix`: workstation identity and hardware, account and Home Manager,
+  encrypted Btrfs layout, persistence, root-reset ordering, zram, local snapshot
+  policies, signed measured boot, and complete system derivation evaluation.
 
 `deployment/helpers.nix` supplies small assertion and configuration lookup helpers.
 It is excluded from automatic module discovery. Credential checks explicitly name
@@ -83,6 +87,33 @@ nix build --no-link .#checks.x86_64-linux.deployment-tycho \
 These checks force the existing evaluation assertions and build only success
 markers. They do not build or activate systems, read secret contents, or verify
 runtime credential delivery. They also run with `nix flake check`.
+
+## Storage runtime test
+
+```sh
+nix build --no-link -L .#checks.x86_64-linux.runtime-pella-storage
+```
+
+`runtime/pella-storage.nix` uses Disko's installation test library with the real
+pella modules and layout on an 8 GiB disposable virtual disk. It formats and
+installs that disk, boots it, exercises Snapper recovery and cleanup, then reboots
+to verify root reset, nested-subvolume deletion, persistent data, saved network
+profiles, machine identity, and snapshot survival. The physical SSD is never
+passed to QEMU.
+
+The fixture replaces hardware detection, boot signing, and TPM unlocking with
+virtual hardware, ordinary systemd-boot, and a test-only LUKS key. It also reduces
+LUKS memory cost and Snapper's minimum cleanup age for the small VM. Production
+retention counts remain in effect. This verifies storage behavior; firmware key
+enrollment, measured boot, physical TPM unlocking, and real suspend remain manual
+hardware acceptance checks. The test is registered with `nix flake check`.
+
+Disko shares the host store over 9p to avoid copying the full system into each
+image. Home Manager activation is disabled in this fixture because its Nix daemon
+cannot change ownership of that shared store. The account and Home Manager
+configuration still evaluate and build through the production checks; their live
+activation needs a separate test on a writable store. The restart check shuts down
+and starts the same virtual disk because Disko's custom QEMU exits on guest reboot.
 
 To collect results even when individual assertions fail:
 
@@ -169,6 +200,8 @@ modules into small NixOS configurations. The outer `config` is the flake-parts
 configuration; a fixture's `.config` is a separate NixOS configuration.
 
 - `services/docker.nix` owns Docker defaults and overrides.
+- `platforms/ephemeral-root.nix` owns root-reset activation, required device
+  settings, mount ordering, and protection against conflicting root/baseline names.
 - `services/home-manager.nix` owns shared package policy and delivery for multiple
   users; `profiles/server.nix` owns selection of the Matyas server home and tools.
 - `profiles/workstation.nix` owns workstation Home Manager selection, NetworkManager

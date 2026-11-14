@@ -11,6 +11,7 @@ inputs.flake-parts.lib.mkFlake { inherit inputs; } {
     ./tests/composition
     ./tests/deployment
     ./tests/builds
+    ./tests/runtime
   ];
   touchup.attr.modules.enable = false;
   _module.args.rootPath = ./.;
