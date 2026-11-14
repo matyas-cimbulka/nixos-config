@@ -203,10 +203,14 @@ configuration; a fixture's `.config` is a separate NixOS configuration.
 - `platforms/ephemeral-root.nix` owns root-reset activation, required device
   settings, mount ordering, and protection against conflicting root/baseline names.
 - `services/home-manager.nix` owns shared package policy and delivery for multiple
-  users; `profiles/server.nix` owns selection of the Matyas server home and tools.
+  users, plus Hyprland package, session, and UWSM environment coordination;
+  `profiles/server.nix` owns selection of the Matyas server home and tools.
 - `profiles/workstation.nix` owns workstation Home Manager selection, NetworkManager
   ownership and user access, password-protected sudo, overridable network defaults,
-  and independence from server and deployment services.
+  independence from server and deployment services, and NixOS/Home Manager
+  Hyprland selection, session registration, package coherence, and startup ownership.
+- `home/profiles.nix` owns personal desktop selection and generated minimal
+  Hyprland bindings while preserving the shared CLI environment.
 - `services/alloy.nix` owns Alloy settings, Loki integration, the shared trace
   receiver, and automatic cAdvisor
   integration with Docker, including its opt-outs and supporting configuration.

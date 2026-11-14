@@ -11,6 +11,8 @@
   flake.modules.homeManager.matyas-workstation = {
     imports = [
       config.flake.modules.homeManager.matyas-base
+      config.flake.modules.homeManager.matyas-desktop-hyprland
+      config.flake.modules.homeManager.matyas-desktop-ghostty
     ];
   };
 }

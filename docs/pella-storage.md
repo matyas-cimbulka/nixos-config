@@ -1,8 +1,9 @@
 # Pella storage and boot
 
-This is the storage foundation for the ASUS PN53 workstation. The desktop and
-application configuration will follow separately. Nothing here installs NixOS on
-the running Ubuntu system.
+This is the storage foundation for the ASUS PN53 workstation. The initial
+[Hyprland/Ghostty desktop](workstation-desktop.md) is configured separately;
+Noctalia and the remaining desktop integration will follow. Nothing here installs
+NixOS on the running Ubuntu system.
 
 ## Layout
 

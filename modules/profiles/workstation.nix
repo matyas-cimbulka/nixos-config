@@ -4,6 +4,7 @@
     imports = [
       config.flake.modules.nixos.base-profile
       config.flake.modules.nixos.home-manager
+      config.flake.modules.nixos.hyprland
       config.flake.modules.nixos.matyas
     ];
 

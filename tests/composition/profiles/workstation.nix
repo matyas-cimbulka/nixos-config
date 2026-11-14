@@ -11,11 +11,46 @@ let
       useNetworkd = true;
     };
   };
+  customHyprland = extend active {
+    programs.hyprland.package = active.pkgs.hyprland.overrideAttrs (_: {
+      pname = "hyprland-composition-test";
+    });
+  };
   home = active.config.home-manager.users.matyas;
+  homeHyprland = home.wayland.windowManager.hyprland;
   standaloneHome = config.flake.homeConfigurations.matyas-workstation;
+  sessions = lib.concatMap (package: package.providedSessions or [])
+    active.config.services.displayManager.sessionPackages;
+  coherentHyprlandPackages = system:
+    let
+      native = system.config.programs.hyprland;
+      personal = system.config.home-manager.users.matyas.wayland.windowManager.hyprland;
+      samePackage = left: right: toString left == toString right;
+    in
+      native.enable && personal.enable && system.config.xdg.portal.enable
+      && lib.any (samePackage native.portalPackage) system.config.xdg.portal.extraPortals
+      # Home Manager may delegate installation to NixOS or use the same final packages.
+      && (personal.finalPackage == null || samePackage personal.finalPackage native.package)
+      && (personal.finalPortalPackage == null || samePackage personal.finalPortalPackage native.portalPackage);
 in
 {
   flake.lib.compositionTests.workstation-profile = {
+    hyprland-selects-system-and-home = check "Workstation should select both NixOS Hyprland integration and Matyas's Home Manager configuration."
+      (active.config.programs.hyprland.enable && homeHyprland.enable);
+    hyprland-registers-managed-session = check "Workstation should register a Hyprland session that launches through UWSM."
+      (builtins.elem "hyprland-uwsm" sessions);
+    hyprland-packages-and-portal-agree = check "Workstation Home Manager should use or delegate to the NixOS compositor and portal packages."
+      (coherentHyprlandPackages active);
+    hyprland-package-override-stays-coherent = check "Overriding the system compositor should preserve matching Home Manager and portal packages."
+      (coherentHyprlandPackages customHyprland);
+    hyprland-session-has-one-owner = check "UWSM should manage the Hyprland session without a competing Home Manager session target."
+      (active.config.programs.hyprland.enable && homeHyprland.enable
+        && active.config.programs.hyprland.withUWSM && active.config.programs.uwsm.enable
+        && !homeHyprland.systemd.enable
+        && !(home.systemd.user.targets ? hyprland-session));
+    hyprland-logout-stops-managed-session = check "The embedded Hyprland configuration should launch applications and log out through UWSM."
+      (lib.hasInfix "uwsm app --" (home.xdg.configFile."hypr/hyprland.lua".text or "")
+        && lib.hasInfix "uwsm stop" (home.xdg.configFile."hypr/hyprland.lua".text or ""));
     explicitly-selects-common-features = check "Workstation should compose base policy, the Matyas account, and shared Home Manager policy."
       (active.config.users.users.matyas.isNormalUser
         && builtins.elem "flakes" active.config.nix.settings.experimental-features
