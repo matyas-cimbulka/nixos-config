@@ -1,3 +1,3 @@
 {
-  imports = [ ./pella-storage.nix ];
+  imports = [ ./pella-storage.nix ./desktop.nix ];
 }

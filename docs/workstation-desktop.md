@@ -57,6 +57,13 @@ application access, and credential survival across reboot after installation.
 
 ## Validation
 
+Use `nix run .#desktop-preview` on x86_64 Linux to inspect the desktop in a
+disposable QEMU VM before installation. The preview shares the actual workstation
+profile and personal Home Manager settings, including future Noctalia changes.
+It has separate virtual storage and test credentials, and never activates the
+physical workstation. See the [desktop testing guide](../tests/README.md#desktop-preview-and-runtime-test)
+for screenshots, saved preview state, automated checks, and remote-builder requirements.
+
 Composition tests cover profile selection, package coherence including overrides,
 session ownership, multiple Home Manager users, and the generated configuration.
 Builds and `Hyprland --verify-config` validate artifacts and configuration syntax;

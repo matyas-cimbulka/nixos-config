@@ -12,7 +12,7 @@ Checks are registered on the derivation's build platform. Current targets are:
 - `build-home-matyas-server`
 - `build-home-matyas-workstation`
 
-Run all build targets independently of the evaluation suites:
+Run all host, guest, and home build targets independently of the evaluation suites:
 
 ```sh
 nix build --no-link --keep-going .#checks.x86_64-linux.build-all
@@ -61,6 +61,9 @@ the `guests` group. Machine suites own the other deployment relationships:
   encrypted Btrfs layout, persistence, root-reset ordering, zram, local snapshot
   policies, signed measured boot, desktop keyring persistence coverage, and
   complete system derivation evaluation.
+- `desktop.nix`: preview/production desktop parity, active Home Manager delivery,
+  installation and credential isolation, preview launch/build registration, and
+  headless runtime-check builder requirements.
 
 `deployment/helpers.nix` supplies small assertion and configuration lookup helpers.
 It is excluded from automatic module discovery. Credential checks explicitly name
@@ -115,6 +118,78 @@ cannot change ownership of that shared store. The account and Home Manager
 configuration still evaluate and build through the production checks; their live
 activation needs a separate test on a writable store. The restart check shuts down
 and starts the same virtual disk because Disko's custom QEMU exits on guest reboot.
+
+## Desktop preview and runtime test
+
+On an x86_64 Linux desktop, build and launch the interactive preview with:
+
+```sh
+nix run .#desktop-preview
+```
+
+Build the preview without starting it, including on a remote Linux builder:
+
+```sh
+nix build --no-link .#checks.x86_64-linux.build-desktop-preview
+```
+
+`runtime/desktop.nix` supplies one desktop fixture to the preview and automated
+test. It imports the real workstation profile, including Matyas's Home Manager
+configuration, Hyprland, UWSM, Ghostty, fonts, and GNOME Keyring. It uses virtual
+hardware and an ordinary disposable filesystem instead of pella's physical disk,
+LUKS, TPM, or installation credentials. Home Manager activation is enabled; the
+guest gets a writable overlay over the read-only shared Nix store.
+
+The preview allocates four CPUs and 4 GiB RAM and renders at 1280x800 using a
+virtual GPU and guest Mesa software rendering. No host GPU is passed through.
+Until a greeter is selected, it automatically logs in as `matyas` on tty1 and
+starts Hyprland through UWSM. The VM-only password is `test-only`; there are no
+forwarded host ports, production SSH keys, or Tailscale enrollment.
+
+The launcher stores the VM disk at
+`${XDG_STATE_HOME:-$HOME/.local/state}/nixos-config/desktop-preview/pella-preview.qcow2`,
+outside the checkout. Changes made inside the preview survive closing its window
+and launching it again. Stop the VM and remove that disposable disk to reset it,
+or select a separate disk with `NIX_DISK_IMAGE=/absolute/path/preview.qcow2`.
+Rebuilding uses the current declarative desktop configuration with the saved home
+state. The preview never switches the host system or activates the host home.
+
+The automated script in `runtime/desktop.py` waits for Home Manager activation and
+the UWSM graphical session, checks the virtual monitor, opens Ghostty using the
+real Super+Return binding, types a command, checks its side effect and visible text,
+and captures desktop and terminal screenshots. It uses a fresh disposable disk,
+not the interactive preview's saved state. Visual approval of colors, layout, and
+spacing remains a separate review; the runtime test checks startup and interaction.
+
+Run the automated test or build its driver for direct debugging:
+
+```sh
+nix build --no-link -L .#checks.x86_64-linux.runtime-desktop
+nix build --out-link /tmp/desktop-test-driver .#packages.x86_64-linux.desktop-test-driver
+mkdir -p /tmp/desktop-test-output
+env -u DISPLAY -u WAYLAND_DISPLAY /tmp/desktop-test-driver/bin/nixos-test-driver \
+  -o /tmp/desktop-test-output
+```
+
+The driver saves screenshots and logs in its output directory. For an interactive
+Python session, append `--interactive`, then use `start_all()`, `test_script()`,
+and commands such as `pella.screenshot("review")` or `pella.send_key("meta_l-ret")`.
+Only one driver using these default machine/network state paths should run per
+user at a time.
+
+Both `build-desktop-preview` and `runtime-desktop` are registered with
+`nix flake check`. `nix flake check --no-build` only evaluates them; a full check
+realizes the preview and runs the VM test unless a cached result is reused.
+Remote builders can build the preview artifacts without a display or GPU. Running
+the preview remains an explicit local action on x86_64 Linux; building it remotely
+from a Mac does not make the Linux launcher executable on macOS.
+
+The runtime derivation declares `kvm` and `nixos-test` through the NixOS test
+framework. Configure a suitable x86_64 Linux builder with those supported features
+and ensure its actual build users can open `/dev/kvm` inside the sandbox. Merely
+advertising a feature does not grant device access. QEMU can fall back to slower
+CPU emulation if access is missing. No check is conditionally skipped based on
+the evaluator's devices, display environment, or builder availability.
 
 To collect results even when individual assertions fail:
 
