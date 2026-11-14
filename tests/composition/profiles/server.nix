@@ -26,6 +26,10 @@ in
         && !active.config.services.openssh.settings.KbdInteractiveAuthentication);
     networking-policy-is-overridable = check "Server network defaults should remain deployment-overridable."
       (!custom.config.networking.firewall.enable && custom.config.networking.useDHCP);
+    embeds-shared-home-manager = check "The server profile should select the Matyas home with the shared package policy and CLI tools."
+      (active.config.home-manager.useGlobalPkgs && active.config.home-manager.useUserPackages
+        && home.home.username == "matyas" && home.home.homeDirectory == "/home/matyas"
+        && home.programs.btop.enable && home.programs.neovim.enable);
     debugging-home-matches-standalone-tools = check "Embedded server Home Manager should use the same tools and settings as the standalone profile."
       (home.programs.neovim.enable == standaloneHome.config.programs.neovim.enable
         && home.programs.git.settings == standaloneHome.config.programs.git.settings

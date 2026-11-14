@@ -3,6 +3,7 @@
   flake.modules.nixos.server-profile = {
     imports = [
       config.flake.modules.nixos.base-profile
+      config.flake.modules.nixos.home-manager
       config.flake.modules.nixos.matyas
 
       config.flake.modules.nixos.alloy
@@ -34,5 +35,9 @@
         MaxAuthTries = 3;
       };
     };
+
+    home-manager.users.matyas.imports = [
+      config.flake.modules.homeManager.matyas-server
+    ];
   };
 }

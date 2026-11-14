@@ -152,7 +152,7 @@ composition/
   containers/     # Traefik and Pocket ID, including network and tracing integration.
   platforms/      # MicroVM networking, store sharing, and persistent SSH identity.
   profiles/       # Base and server policy composition.
-  users/          # Matyas account and embedded Home Manager.
+  users/          # Matyas account and independence from Home Manager and server policy.
   home/           # CLI groups, home profiles, and vcs/{git,jujutsu}.nix.
 ```
 
@@ -168,6 +168,8 @@ modules into small NixOS configurations. The outer `config` is the flake-parts
 configuration; a fixture's `.config` is a separate NixOS configuration.
 
 - `services/docker.nix` owns Docker defaults and overrides.
+- `services/home-manager.nix` owns shared package policy and delivery for multiple
+  users; `profiles/server.nix` owns selection of the Matyas server home and tools.
 - `services/alloy.nix` owns Alloy settings, Loki integration, the shared trace
   receiver, and automatic cAdvisor
   integration with Docker, including its opt-outs and supporting configuration.
