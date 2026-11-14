@@ -59,7 +59,8 @@ the `guests` group. Machine suites own the other deployment relationships:
   internal monitoring exposure.
 - `pella.nix`: workstation identity and hardware, account and Home Manager,
   encrypted Btrfs layout, persistence, root-reset ordering, zram, local snapshot
-  policies, signed measured boot, and complete system derivation evaluation.
+  policies, signed measured boot, desktop keyring persistence coverage, and
+  complete system derivation evaluation.
 
 `deployment/helpers.nix` supplies small assertion and configuration lookup helpers.
 It is excluded from automatic module discovery. Credential checks explicitly name
@@ -208,7 +209,9 @@ configuration; a fixture's `.config` is a separate NixOS configuration.
 - `profiles/workstation.nix` owns workstation Home Manager selection, NetworkManager
   ownership and user access, password-protected sudo, overridable network defaults,
   independence from server and deployment services, and NixOS/Home Manager
-  Hyprland selection, session registration, package coherence, and startup ownership.
+  Hyprland selection, session registration, package coherence, and startup ownership;
+  desktop keyring login hooks, greetd inheritance, and explicit opt-out. The server
+  profile suite also checks that desktop keyring support remains unselected.
 - `home/profiles.nix` owns personal desktop selection and generated minimal
   Hyprland bindings while preserving the shared CLI environment.
 - `services/alloy.nix` owns Alloy settings, Loki integration, the shared trace

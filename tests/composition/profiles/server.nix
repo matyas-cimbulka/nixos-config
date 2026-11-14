@@ -14,6 +14,9 @@ let
 in
 {
   flake.lib.compositionTests.server-profile = {
+    leaves-desktop-keyring-unselected = check "The server profile should not select a desktop keyring or its password-login hooks."
+      (!active.config.services.gnome.gnome-keyring.enable
+        && !active.config.security.pam.services.login.enableGnomeKeyring);
     explicitly-selects-common-features = check "Server should compose base policy, Matyas, and Alloy."
       (active.config.services.alloy.enable && active.config.users.users.matyas.isNormalUser
         && builtins.elem "flakes" active.config.nix.settings.experimental-features);

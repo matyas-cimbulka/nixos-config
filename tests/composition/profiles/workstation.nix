@@ -16,6 +16,13 @@ let
       pname = "hyprland-composition-test";
     });
   };
+  withoutKeyring = extend active { services.gnome.gnome-keyring.enable = false; };
+  withGreeter = extend active {
+    services.greetd = {
+      enable = true;
+      settings.default_session.command = "${active.pkgs.coreutils}/bin/false";
+    };
+  };
   home = active.config.home-manager.users.matyas;
   homeHyprland = home.wayland.windowManager.hyprland;
   standaloneHome = config.flake.homeConfigurations.matyas-workstation;
@@ -32,9 +39,31 @@ let
       # Home Manager may delegate installation to NixOS or use the same final packages.
       && (personal.finalPackage == null || samePackage personal.finalPackage native.package)
       && (personal.finalPortalPackage == null || samePackage personal.finalPortalPackage native.portalPackage);
+  keyringLogin = system:
+    let pam = system.config.security.pam.services.login;
+    in system.config.services.gnome.gnome-keyring.enable && pam.enableGnomeKeyring
+      && pam.rules.auth.gnome_keyring.enable && pam.rules.auth.gnome_keyring.control == "optional"
+      && pam.rules.session.gnome_keyring.enable && pam.rules.session.gnome_keyring.control == "optional"
+      && pam.rules.session.gnome_keyring.settings.auto_start
+      && lib.hasInfix "pam_gnome_keyring.so" pam.text;
 in
 {
   flake.lib.compositionTests.workstation-profile = {
+    keyring-supports-password-login = check "Workstation should provide the Secret Service daemon and optional PAM hooks to unlock and start the login keyring."
+      (keyringLogin active
+        && lib.any (package: toString package == toString active.pkgs.gnome-keyring) active.config.services.dbus.packages
+        && !active.config.services.greetd.enable);
+    greetd-inherits-keyring-login = check "A future greetd greeter should inherit the keyring-enabled login PAM stack without duplicate keyring hooks."
+      (keyringLogin withGreeter
+        && lib.hasInfix "auth substack login" withGreeter.config.security.pam.services.greetd.text
+        && lib.hasInfix "session include login" withGreeter.config.security.pam.services.greetd.text
+        && !(lib.hasInfix "pam_gnome_keyring.so" withGreeter.config.security.pam.services.greetd.text));
+    keyring-can-be-disabled = check "Disabling the keyring feature should remove its login hooks and Secret Service registration."
+      (!withoutKeyring.config.services.gnome.gnome-keyring.enable
+        && !withoutKeyring.config.security.pam.services.login.enableGnomeKeyring
+        && !(lib.hasInfix "pam_gnome_keyring.so" withoutKeyring.config.security.pam.services.login.text)
+        && !(lib.any (package: toString package == toString withoutKeyring.pkgs.gnome-keyring)
+          withoutKeyring.config.services.dbus.packages));
     hyprland-selects-system-and-home = check "Workstation should select both NixOS Hyprland integration and Matyas's Home Manager configuration."
       (active.config.programs.hyprland.enable && homeHyprland.enable);
     hyprland-registers-managed-session = check "Workstation should register a Hyprland session that launches through UWSM."

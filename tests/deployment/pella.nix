@@ -28,6 +28,13 @@ let
 in
 {
   flake.lib.deploymentTests.pella = {
+    keyring-state-is-covered-by-home-persistence = check "Pella's desktop keyring data must live beneath the independently persistent user home."
+      (machine.services.gnome.gnome-keyring.enable
+        && machine.home-manager.users.matyas.home.homeDirectory == "/home/matyas"
+        && lib.hasPrefix "/home/matyas/" machine.home-manager.users.matyas.xdg.dataHome
+        && machine.fileSystems."/home".fsType == "btrfs"
+        && builtins.elem "subvol=@home" machine.fileSystems."/home".options
+        && machine.fileSystems."/home".neededForBoot);
     identity-and-platform = check "Pella must be the x86_64 workstation in Europe/Prague."
       (machine.networking.hostName == "pella" && machine.time.timeZone == "Europe/Prague"
         && machine.nixpkgs.hostPlatform.system == "x86_64-linux");
