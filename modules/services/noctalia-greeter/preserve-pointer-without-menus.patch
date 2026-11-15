@@ -1,0 +1,13 @@
+--- a/src/greeter/greeter_surface.cpp
++++ b/src/greeter/greeter_surface.cpp
+@@ -3139,4 +3139,10 @@
+ void GreeterSurface::invalidateMenuPointers() {
++  // Relayout also visits closed menus. Nothing is being removed in that case;
++  // preserve a press on a persistent control across its focus-induced layout.
++  if (m_userMenuPanel == nullptr && m_sessionMenuPanel == nullptr && m_schemeMenuPanel == nullptr) {
++    return;
++  }
++
+   // Rows are transient, but the shared Noctalia scrollbar stays alive through
+   // relayouts so its pointer capture and hover animation can continue.
+   const MenuScroll* scroll = activeMenuScroll();

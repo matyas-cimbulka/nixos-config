@@ -135,15 +135,25 @@ nix build --no-link .#checks.x86_64-linux.build-desktop-preview
 
 `runtime/desktop.nix` supplies one desktop fixture to the preview and automated
 test. It imports the real workstation profile, including Matyas's Home Manager
-configuration, Hyprland, UWSM, Ghostty, fonts, and GNOME Keyring. It uses virtual
+configuration, Hyprland, UWSM, Noctalia Greeter, Ghostty, fonts, and GNOME Keyring.
+It uses virtual
 hardware and an ordinary disposable filesystem instead of pella's physical disk,
 LUKS, TPM, or installation credentials. Home Manager activation is enabled; the
-guest gets a writable overlay over the read-only shared Nix store.
+guest gets a writable overlay over the read-only shared Nix store. Its writable
+layer stays on the VM disk alongside the Nix database, so packages and derivations
+created with Nix survive shutting down and reopening the preview.
 
-The preview allocates four CPUs and 4 GiB RAM and renders at 1280x800 using a
-virtual GPU and guest Mesa software rendering. No host GPU is passed through.
-Until a greeter is selected, it automatically logs in as `matyas` on tty1 and
-starts Hyprland through UWSM. The VM-only password is `test-only`; there are no
+The preview allocates four CPUs and 4 GiB RAM. Both the greeter and Hyprland
+explicitly use 1920x1080 (16:9) at scale 1, using a virtual GPU and guest Mesa
+software rendering. This avoids the interactive viewer selecting a smaller
+preferred mode. Production keeps automatic monitor detection; desktop parity
+checks exclude only these preview display overrides. The preview's greeter command
+explicitly permits wlroots software rendering and forces software cursors;
+production keeps normal renderer and hardware cursor selection.
+No host GPU is passed through.
+The graphical greeter opens the password step for the VM's single `matyas` account;
+enter the VM-only password `test-only` to start Hyprland through UWSM. Real password
+authentication also creates and unlocks the login keyring through PAM. There are no
 forwarded host ports, production SSH keys, or Tailscale enrollment.
 
 The launcher stores the VM disk at
@@ -154,10 +164,34 @@ or select a separate disk with `NIX_DISK_IMAGE=/absolute/path/preview.qcow2`.
 Rebuilding uses the current declarative desktop configuration with the saved home
 state. The preview never switches the host system or activates the host home.
 
-The automated script in `runtime/desktop.py` waits for Home Manager activation and
-the UWSM graphical session, checks the virtual monitor, opens Ghostty using the
-real Super+Return binding, types a command, checks its side effect and visible text,
-and captures desktop and terminal screenshots. It uses a fresh disposable disk,
+The read-only store layer is borrowed from the host; its contents can change
+between preview launches, including after host garbage collection. The guest
+database can therefore retain registrations for borrowed paths that are no longer
+visible. After registering the current system closure, the preview automatically
+runs `nix-store --store local --verify` before starting the Nix daemon. This checks
+path existence and clears stale metadata without hashing every file's contents.
+Guest-created store paths, the home directory, and UI settings remain on disk.
+Restart an older preview with `nix run .#desktop-preview` to get this startup repair;
+manual `sudo nix-store --verify` after each configuration update is unnecessary.
+
+The automated script in `runtime/desktop.py` waits for Home Manager activation,
+checks pointer clicks in Noctalia Greeter's appearance menu, logs in, and checks
+the UWSM graphical session, unlocked keyring, Noctalia service, and virtual monitor.
+Its keyring client opens a Secret Service session and checks the Login collection
+through the same connection.
+It also checks that UWSM startup messages stay off the TTY but reach the journal,
+and builds and runs a local offline flake as Matyas before and after a VM power
+cycle to verify writable-store persistence. It also reproduces stale metadata for
+a borrowed source path and requires Nix to work after restart without a manual
+repair. The guest daemon removes only the isolated fixture through its writable
+overlay; assertions confirm the host export stays read-only and retains the file.
+It opens Ghostty
+using Super+Return and checks keyboard input, then exercises workspace movement,
+the Noctalia launcher and control center over a terminal, notification delivery,
+UI overrides across service restart, and password lock/unlock. Incorrect passwords
+are rejected by both the greeter and lock screen, and logout must return to the
+graphical greeter.
+It captures screenshots for visual review. It uses a fresh disposable disk,
 not the interactive preview's saved state. Visual approval of colors, layout, and
 spacing remains a separate review; the runtime test checks startup and interaction.
 
@@ -187,9 +221,11 @@ from a Mac does not make the Linux launcher executable on macOS.
 The runtime derivation declares `kvm` and `nixos-test` through the NixOS test
 framework. Configure a suitable x86_64 Linux builder with those supported features
 and ensure its actual build users can open `/dev/kvm` inside the sandbox. Merely
-advertising a feature does not grant device access. QEMU can fall back to slower
-CPU emulation if access is missing. No check is conditionally skipped based on
-the evaluator's devices, display environment, or builder availability.
+advertising a feature does not grant device access. The graphical runtime check
+requires KVM explicitly and fails immediately if the build user cannot access it,
+instead of spending minutes rendering through CPU emulation. No check is
+conditionally skipped based on the evaluator's devices, display environment, or
+builder availability.
 
 To collect results even when individual assertions fail:
 
@@ -287,6 +323,10 @@ configuration; a fixture's `.config` is a separate NixOS configuration.
   Hyprland selection, session registration, package coherence, and startup ownership;
   desktop keyring login hooks, greetd inheritance, and explicit opt-out. The server
   profile suite also checks that desktop keyring support remains unselected.
+- `services/noctalia.nix` owns system support, recommended-services opt-out, and
+  disabled-feature cleanup. `home/noctalia.nix` owns per-user service selection,
+  generated baseline, and conditional Hyprland integration. Shared Home Manager
+  tests cover system package overrides, personal overrides, and multiple users.
 - `home/profiles.nix` owns personal desktop selection and generated minimal
   Hyprland bindings while preserving the shared CLI environment.
 - `services/alloy.nix` owns Alloy settings, Loki integration, the shared trace

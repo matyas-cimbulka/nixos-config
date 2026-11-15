@@ -1,11 +1,16 @@
 { inputs, config, lib, ... }:
 let
-  targetSystem = "x86_64-linux";
+  deployment = config.flake.nixosConfigurations.pella.config;
+  targetSystem = deployment.nixpkgs.hostPlatform.system;
+  borrowedSourceName = "desktop-preview-nix-source.nix";
+  borrowedSourceContents = "true";
+  borrowedSource = builtins.toFile borrowedSourceName borrowedSourceContents;
   # Both consumers import this module; desktop features still come from the real profile.
   desktop = { config, pkgs, lib, ... }: {
     imports = [ configModule ];
 
     networking.hostName = "pella-preview";
+    time.timeZone = deployment.time.timeZone;
     system.stateVersion = "26.11";
 
     users.users.matyas = {
@@ -14,17 +19,56 @@ let
       openssh.authorizedKeys.keys = lib.mkForce [];
     };
 
-    # Only the disposable VM logs in automatically. A later greeter takes over.
-    services.getty.autologinUser = lib.mkIf (!config.services.greetd.enable) "matyas";
-    programs.fish.loginShellInit = lib.mkIf (!config.services.greetd.enable) ''
-      if test "$USER" = matyas; and test (tty) = /dev/tty1
-        exec uwsm start -- hyprland.desktop
-      end
-    '';
+    services = {
+      getty.autologinUser = lib.mkForce null;
+      displayManager.noctalia-greeter.settings.output = {
+        width = 1920;
+        height = 1080;
+        scale = 1.0;
+      };
+      # greetd starts a fresh session environment, so pass renderer and cursor flags to its command.
+      greetd.settings.default_session.command = lib.mkIf config.services.displayManager.noctalia-greeter.enable
+        (lib.escapeShellArgs ([ "${pkgs.coreutils}/bin/env" "WLR_RENDERER_ALLOW_SOFTWARE=1" "WLR_NO_HARDWARE_CURSORS=1"
+          (lib.getExe' config.services.displayManager.noctalia-greeter.package "noctalia-greeter-session")
+        ] ++ config.services.displayManager.noctalia-greeter.extraArgs));
+    };
+    home-manager.users.matyas.wayland.windowManager.hyprland.settings.monitor = {
+      mode = lib.mkForce "1920x1080@60";
+      scale = lib.mkForce 1.0;
+    };
 
-    # Keep software rendering inside the guest: builders need no host GPU or display.
-    environment.sessionVariables.LIBGL_ALWAYS_SOFTWARE = "1";
-    environment.systemPackages = [ pkgs.jq ];
+    environment = {
+      # Keep software rendering inside the guest: builders need no host GPU or display.
+      sessionVariables.LIBGL_ALWAYS_SOFTWARE = "1";
+      systemPackages = [ pkgs.jq pkgs.libnotify (pkgs.python3.withPackages (packages: [ packages.dbus-python ])) ];
+      etc = {
+        "desktop-test/keyring.py".source = ./desktop-keyring.py;
+        "desktop-test/nix".source = pkgs.writeTextDir "flake.nix" ''
+        {
+          outputs = _:
+            assert import (builtins.toFile ${builtins.toJSON borrowedSourceName} ${builtins.toJSON borrowedSourceContents});
+            let
+              # Restore store references after serializing the fixture into a flake.
+              bash = builtins.appendContext "${pkgs.bash}" { "${pkgs.bash}".path = true; };
+              coreutils = builtins.appendContext "${pkgs.coreutils}" { "${pkgs.coreutils}".path = true; };
+              probe = derivation {
+                name = "desktop-preview-nix-probe";
+                system = "${pkgs.stdenv.hostPlatform.system}";
+                builder = "''${bash}/bin/bash";
+                args = [ "-c" "''${coreutils}/bin/mkdir -p $out/bin; printf '#!''${bash}/bin/bash\\necho Desktop Nix works\\n' > $out/bin/desktop-preview-nix-probe; ''${coreutils}/bin/chmod +x $out/bin/desktop-preview-nix-probe" ];
+              };
+            in {
+              packages.${pkgs.stdenv.hostPlatform.system}.default = probe;
+            };
+        }
+        '';
+      };
+    };
+    # The borrowed host store can change between launches while the guest DB persists.
+    # Reconcile it after loading the current closure and before the daemon can serve clients.
+    systemd.services.register-nix-paths.postStart = lib.mkIf config.nix.enable ''
+      ${lib.getExe' config.nix.package.out "nix-store"} --store local --verify
+    '';
     boot.kernelModules = [ "virtio_gpu" ];
     virtualisation = {
       memorySize = 4096;
@@ -32,7 +76,8 @@ let
       diskSize = 8192;
       graphics = true;
       writableStore = true;
-      qemu.options = [ "-vga none" "-device virtio-gpu-pci,xres=1280,yres=800" ];
+      writableStoreUseTmpfs = false;
+      qemu.options = [ "-vga none" "-device virtio-gpu-pci,xres=1920,yres=1080" ];
     };
   };
   configModule = config.flake.modules.nixos.workstation-profile;
@@ -61,10 +106,15 @@ in
       smoke = inputs.nixpkgs.lib.nixos.runTest {
         name = "desktop";
         hostPkgs = pkgs;
+        qemu.forceAccel = true;
         nodes.pella = desktop;
         enableOCR = true;
-        globalTimeout = 300;
-        testScript = builtins.readFile ./desktop.py;
+        globalTimeout = 600;
+        # Driver-only inputs remain visible in the borrowed host store, outside the VM closure.
+        testScript = ''
+          borrowed_source = "${borrowedSource}"
+          borrowed_registration = "${pkgs.closureInfo { rootPaths = [ borrowedSource ]; }}/registration"
+        '' + builtins.readFile ./desktop.py;
       };
     in
     lib.mkIf (system == targetSystem) {

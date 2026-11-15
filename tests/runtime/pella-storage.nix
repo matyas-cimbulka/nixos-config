@@ -82,6 +82,8 @@ in
               machine.succeed("test -n \"$(ls -A /var/lib/NetworkManager/system-connections)\"")
               machine.succeed("echo home > /home/matyas/persistent-marker")
               machine.succeed("echo state > /var/lib/nixos/persistent-marker")
+              machine.succeed("echo greeter > /var/lib/noctalia-greeter/persistent-marker")
+              machine.succeed("echo accounts > /var/lib/AccountsService/persistent-marker")
               machine.succeed("echo nix > /nix/persistent-marker")
               machine.succeed("echo log > /var/log/persistent-marker")
               machine.succeed("touch /root/volatile-marker")
@@ -95,6 +97,9 @@ in
               machine.fail("test -e /var/lib/machines/volatile-child")
               machine.succeed("grep -qx home /home/matyas/persistent-marker")
               machine.succeed("grep -qx state /var/lib/nixos/persistent-marker")
+              machine.succeed("grep -qx greeter /var/lib/noctalia-greeter/persistent-marker")
+              machine.succeed("grep -qx accounts /var/lib/AccountsService/persistent-marker")
+              machine.succeed("test $(stat -c %U:%G:%a /var/lib/noctalia-greeter) = greeter:greeter:750")
               machine.succeed("grep -qx nix /nix/persistent-marker")
               machine.succeed("grep -qx log /var/log/persistent-marker")
               assert machine.succeed("cat /etc/machine-id").strip() == identity

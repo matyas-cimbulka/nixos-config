@@ -17,12 +17,7 @@ let
     });
   };
   withoutKeyring = extend active { services.gnome.gnome-keyring.enable = false; };
-  withGreeter = extend active {
-    services.greetd = {
-      enable = true;
-      settings.default_session.command = "${active.pkgs.coreutils}/bin/false";
-    };
-  };
+  withoutGreeter = extend active { services.displayManager.noctalia-greeter.enable = false; };
   home = active.config.home-manager.users.matyas;
   homeHyprland = home.wayland.windowManager.hyprland;
   standaloneHome = config.flake.homeConfigurations.matyas-workstation;
@@ -49,15 +44,31 @@ let
 in
 {
   flake.lib.compositionTests.workstation-profile = {
+    selects-noctalia-with-one-service-owner = check "Workstation should select Noctalia system support and its personal Home Manager service with coherent packages."
+      (active.config.programs.noctalia.enable && home.programs.noctalia.enable
+        && home.programs.noctalia.systemd.enable && !active.config.programs.noctalia.systemd.enable
+        && toString home.programs.noctalia.package == toString active.config.programs.noctalia.package);
     keyring-supports-password-login = check "Workstation should provide the Secret Service daemon and optional PAM hooks to unlock and start the login keyring."
       (keyringLogin active
         && lib.any (package: toString package == toString active.pkgs.gnome-keyring) active.config.services.dbus.packages
-        && !active.config.services.greetd.enable);
-    greetd-inherits-keyring-login = check "A future greetd greeter should inherit the keyring-enabled login PAM stack without duplicate keyring hooks."
-      (keyringLogin withGreeter
-        && lib.hasInfix "auth substack login" withGreeter.config.security.pam.services.greetd.text
-        && lib.hasInfix "session include login" withGreeter.config.security.pam.services.greetd.text
-        && !(lib.hasInfix "pam_gnome_keyring.so" withGreeter.config.security.pam.services.greetd.text));
+        && active.config.services.greetd.enable);
+    greetd-inherits-keyring-login = check "The graphical greeter should inherit the keyring-enabled login PAM stack without duplicate keyring hooks."
+      (keyringLogin active
+        && lib.hasInfix "auth substack login" active.config.security.pam.services.greetd.text
+        && lib.hasInfix "session include login" active.config.security.pam.services.greetd.text
+        && !(lib.hasInfix "pam_gnome_keyring.so" active.config.security.pam.services.greetd.text));
+    greeter-matches-desktop-baseline = check "Workstation should select the graphical greeter with the desktop's dark theme, wallpaper, and an available shell font."
+      (active.config.services.displayManager.noctalia-greeter.enable
+        && active.config.services.displayManager.noctalia-greeter.settings.appearance.scheme == "Catppuccin"
+        && active.config.services.displayManager.noctalia-greeter.settings.appearance.theme_mode == "dark"
+        && active.config.services.displayManager.noctalia-greeter.settings.appearance.wallpaper.path
+          == home.programs.noctalia.settings.wallpaper.default.path
+        && lib.any (font: toString font == toString active.pkgs.inter) active.config.fonts.packages
+        && !(active.config.services.displayManager.noctalia-greeter.settings ? user));
+    greeter-can-be-disabled = check "Disabling the workstation greeter should also remove its appearance integration and system font contribution."
+      (!withoutGreeter.config.services.greetd.enable
+        && !(withoutGreeter.config.services.displayManager.noctalia-greeter.settings ? appearance)
+        && !(lib.any (font: toString font == toString active.pkgs.inter) withoutGreeter.config.fonts.packages));
     keyring-can-be-disabled = check "Disabling the keyring feature should remove its login hooks and Secret Service registration."
       (!withoutKeyring.config.services.gnome.gnome-keyring.enable
         && !withoutKeyring.config.security.pam.services.login.enableGnomeKeyring

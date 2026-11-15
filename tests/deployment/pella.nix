@@ -28,6 +28,9 @@ let
 in
 {
   flake.lib.deploymentTests.pella = {
+    greeter-state-survives-root-reset = check "Pella should preserve greeter appearance and AccountsService metadata across root reset."
+      (machine.services.displayManager.noctalia-greeter.enable
+        && lib.all persistsDirectory [ "/var/lib/noctalia-greeter" "/var/lib/AccountsService" ]);
     keyring-state-is-covered-by-home-persistence = check "Pella's desktop keyring data must live beneath the independently persistent user home."
       (machine.services.gnome.gnome-keyring.enable
         && machine.home-manager.users.matyas.home.homeDirectory == "/home/matyas"

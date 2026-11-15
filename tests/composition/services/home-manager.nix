@@ -24,9 +24,30 @@ let
   };
   withoutUWSM = extend hyprlandUsers { programs.hyprland.withUWSM = lib.mkForce false; };
   homeOnly = extend withUsers { home-manager.users.alice.wayland.windowManager.hyprland.enable = true; };
+  noctaliaUsers = extend withUsers {
+    programs.noctalia = {
+      enable = true;
+      package = withUsers.pkgs.noctalia.overrideAttrs (_: { pname = "noctalia-system-test"; });
+    };
+    home-manager.users = lib.genAttrs userNames (_: { programs.noctalia.enable = true; });
+  };
+  personalNoctalia = extend noctaliaUsers {
+    home-manager.users.bob.programs.noctalia.package = withUsers.pkgs.noctalia.overrideAttrs (_: {
+      pname = "noctalia-personal-test";
+    });
+  };
+  withoutSystemNoctalia = extend noctaliaUsers { programs.noctalia.enable = lib.mkForce false; };
 in
 {
   flake.lib.compositionTests.home-manager = {
+    coordinates-noctalia-for-every-user = check "Every enabled Noctalia home should inherit the final system package, including system overrides."
+      (lib.all (name: toString noctaliaUsers.config.home-manager.users.${name}.programs.noctalia.package
+        == toString noctaliaUsers.config.programs.noctalia.package) userNames);
+    preserves-personal-noctalia-override = check "An explicit per-user shell package should take precedence over automatic system coordination."
+      (personalNoctalia.config.home-manager.users.bob.programs.noctalia.package.pname == "noctalia-personal-test");
+    without-system-noctalia-keeps-home-package = check "An enabled home should retain its own package when system Noctalia is disabled."
+      (toString withoutSystemNoctalia.config.home-manager.users.alice.programs.noctalia.package
+        == toString withoutSystemNoctalia.pkgs.noctalia);
     coordinates-hyprland-for-every-user = check "Each Hyprland user should delegate compositor and portal installation to NixOS and session management to UWSM."
       (lib.all (name:
         let hyprland = hyprlandUsers.config.home-manager.users.${name}.wayland.windowManager.hyprland;

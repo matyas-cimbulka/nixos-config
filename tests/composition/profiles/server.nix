@@ -14,6 +14,12 @@ let
 in
 {
   flake.lib.compositionTests.server-profile = {
+    leaves-graphical-login-unselected = check "Servers should not select the Noctalia greeter, greetd, or AccountsService."
+      (!active.config.services.displayManager.noctalia-greeter.enable
+        && !active.config.services.greetd.enable && !active.config.services.accounts-daemon.enable);
+    leaves-desktop-shell-unselected = check "Server systems and homes should not select Noctalia or desktop audio and Bluetooth services."
+      (!active.config.programs.noctalia.enable && !home.programs.noctalia.enable
+        && !active.config.services.pipewire.enable && !active.config.hardware.bluetooth.enable);
     leaves-desktop-keyring-unselected = check "The server profile should not select a desktop keyring or its password-login hooks."
       (!active.config.services.gnome.gnome-keyring.enable
         && !active.config.security.pam.services.login.enableGnomeKeyring);

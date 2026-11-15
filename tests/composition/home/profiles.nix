@@ -9,6 +9,8 @@ let
 in
 {
   flake.lib.compositionTests.home-profiles = {
+    workstation-selects-noctalia = check "The workstation home should select Noctalia and its graphical-session service."
+      (workstation.config.programs.noctalia.enable && workstation.config.programs.noctalia.systemd.enable);
     workstation-provides-hyprland-and-ghostty = check "The workstation home should provide Hyprland configuration, Ghostty, and standalone session management."
       (workstation.config.wayland.windowManager.hyprland.enable && workstation.config.programs.ghostty.enable
         && workstation.config.wayland.windowManager.hyprland.package != null
@@ -17,7 +19,8 @@ in
       (lib.hasInfix "ghostty" hyprlandText && lib.hasInfix "hl.dsp.window.close()" hyprlandText
         && lib.hasInfix "hl.dsp.exit()" hyprlandText);
     shared-and-server-homes-stay-cli-only = check "Desktop selection must not add Hyprland or Ghostty to the shared or server homes."
-      (lib.all (home: !home.config.wayland.windowManager.hyprland.enable && !home.config.programs.ghostty.enable)
+      (lib.all (home: !home.config.wayland.windowManager.hyprland.enable && !home.config.programs.ghostty.enable
+        && !home.config.programs.noctalia.enable)
         [ base server ]);
     base-owns-user-home-identity = check "The shared home profile should define the Matyas home identity and CLI environment."
       (base.config.home.username == "matyas" && base.config.home.homeDirectory == "/home/matyas"

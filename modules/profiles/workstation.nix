@@ -1,15 +1,34 @@
 { config, lib, ... }:
+let
+  nixos = config.flake.modules.nixos;
+  homeManager = config.flake.modules.homeManager;
+in
 {
-  flake.modules.nixos.workstation-profile = {
+  flake.modules.nixos.workstation-profile = { config, pkgs, ... }:
+  let
+    home = config.home-manager.users.matyas;
+    desktopAppearance = config.services.displayManager.noctalia-greeter.enable && home.programs.noctalia.enable;
+  in
+  {
     imports = [
-      config.flake.modules.nixos.base-profile
-      config.flake.modules.nixos.home-manager
-      config.flake.modules.nixos.gnome-keyring
-      config.flake.modules.nixos.hyprland
-      config.flake.modules.nixos.matyas
+      nixos.base-profile
+      nixos.home-manager
+      nixos.gnome-keyring
+      nixos.hyprland
+      nixos.noctalia
+      nixos.noctalia-greeter
+      nixos.matyas
     ];
 
     security.sudo.execWheelOnly = true;
+
+    services.displayManager.noctalia-greeter.settings.appearance = lib.mkIf desktopAppearance {
+      scheme = lib.mkDefault "Catppuccin";
+      theme_mode = lib.mkDefault "dark";
+      font_family = lib.mkDefault home.programs.noctalia.settings.shell.font_family;
+      wallpaper.path = lib.mkDefault home.programs.noctalia.settings.wallpaper.default.path;
+    };
+    fonts.packages = lib.mkIf desktopAppearance [ pkgs.inter ];
 
     networking = {
       firewall.enable = lib.mkDefault true;
@@ -22,7 +41,7 @@
     users.users.matyas.extraGroups = [ "networkmanager" ];
 
     home-manager.users.matyas.imports = [
-      config.flake.modules.homeManager.matyas-workstation
+      homeManager.matyas-workstation
     ];
   };
 }

@@ -13,6 +13,7 @@
       config.flake.modules.homeManager.matyas-base
       config.flake.modules.homeManager.matyas-desktop-hyprland
       config.flake.modules.homeManager.matyas-desktop-ghostty
+      config.flake.modules.homeManager.matyas-desktop-noctalia
     ];
   };
 }
