@@ -136,9 +136,16 @@ nix build --no-link .#checks.x86_64-linux.build-desktop-preview
 `runtime/desktop.nix` supplies one desktop fixture to the preview and automated
 test. It imports the real workstation profile, including Matyas's Home Manager
 configuration, Hyprland, UWSM, Noctalia Greeter, Ghostty, fonts, and GNOME Keyring.
-It uses virtual
-hardware and an ordinary disposable filesystem instead of pella's physical disk,
-LUKS, TPM, or installation credentials. Home Manager activation is enabled; the
+It also carries Chrome, 1Password, VS Code, and Nautilus. The test checks 1Password's
+real tray item and system helpers without signing into an account, plus browser
+defaults, native Wayland app windows, editable editor settings, and the file-manager
+shortcut. It trusts its controlled editor fixture through VS Code's UI and checks
+that the configured Nix language server starts. Accounts, extension downloads,
+SSH approvals, and Tailscale login are separate manual acceptance checks.
+Tailscale is selected by pella rather than the
+shared workstation profile, so the preview does not enroll in the tailnet.
+It uses virtual hardware and an ordinary disposable filesystem instead of pella's
+physical disk, LUKS, TPM, or installation credentials. Home Manager activation is enabled; the
 guest gets a writable overlay over the read-only shared Nix store. Its writable
 layer stays on the VM disk alongside the Nix database, so packages and derivations
 created with Nix survive shutting down and reopening the preview.
@@ -154,7 +161,8 @@ No host GPU is passed through.
 The graphical greeter opens the password step for the VM's single `matyas` account;
 enter the VM-only password `test-only` to start Hyprland through UWSM. Real password
 authentication also creates and unlocks the login keyring through PAM. There are no
-forwarded host ports, production SSH keys, or Tailscale enrollment.
+forwarded host ports, production private keys, or Tailscale enrollment. The shared
+home configuration includes Matyas's public signing key and author identity.
 
 The launcher stores the VM disk at
 `${XDG_STATE_HOME:-$HOME/.local/state}/nixos-config/desktop-preview/pella-preview.qcow2`,
@@ -186,7 +194,14 @@ a borrowed source path and requires Nix to work after restart without a manual
 repair. The guest daemon removes only the isolated fixture through its writable
 overlay; assertions confirm the host export stays read-only and retains the file.
 It opens Ghostty
-using Super+Return and checks keyboard input, then exercises workspace movement,
+using Super+Return and checks keyboard input, then opens three scrolling columns
+to verify their geometry and directional focus. Super+Tab must load the native
+ScrollOverview plugin without configuration errors and enter its keyboard submap.
+Selecting an off-screen column must focus it without changing its size. The test
+also navigates vertically through an empty workspace to a fourth window on another
+workspace, checks Enter and Escape restore the normal keymap, and captures both
+overview views for visual review. It also clicks an overview window to check
+pointer selection through the custom submap. The test then exercises workspace movement,
 the Noctalia launcher and control center over a terminal, notification delivery,
 UI overrides across service restart, and password lock/unlock. Incorrect passwords
 are rejected by both the greeter and lock screen, and logout must return to the
@@ -241,6 +256,20 @@ nix eval --json .#lib.deploymentTests --apply '
 
 As with composition diagnostics, `false` is a failing test, not an expected-success
 exception. Some evaluation errors are not caught by `tryEval`.
+
+## Development VCS runtime test
+
+`runtime/vcs.nix` registers `runtime-vcs` with flake checks. It activates the real
+shared Home Manager Git and Jujutsu modules with test author data, generates an
+ephemeral SSH key inside the VM, loads it into an agent, and removes the private-key
+file. Both tools must then create commits whose SSH signatures verify through Git.
+This exercises agent-backed signing without a real account, private key in the
+Nix store, remote Git server, or 1Password vault. It does not prove account-backed
+1Password authorization; that is a manual workstation acceptance check.
+
+```sh
+nix build --no-link -L .#checks.x86_64-linux.runtime-vcs
+```
 
 ## Composition tests
 
@@ -369,8 +398,9 @@ generated configuration; they do not send actual traces.
 All reusable NixOS and Home Manager modules are in scope. Machine-specific host
 and guest deployment modules are outside this suite. Home Manager cases test
 standalone tool selection, shared profile membership, shell integration, and the
-unauthenticated VCS baseline; deferred development credential providers are not
-implemented or tested.
+unauthenticated VCS baseline and optional development identity/signing settings.
+The VCS runtime test covers SSH-agent signing; real 1Password authorization remains
+a manual acceptance check.
 
 Failures remain ordinary failing expectations until fixed; they are not skipped
 or treated as expected successes. Run one regression test directly, for example:

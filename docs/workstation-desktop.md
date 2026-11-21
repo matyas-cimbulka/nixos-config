@@ -17,11 +17,15 @@ Without UWSM, Home Manager retains session management. Standalone Home Manager
 installs its own compositor and portal and manages its own session.
 
 The generated configuration uses Lua for the pinned Hyprland version. Connected
-monitors use their preferred mode with automatic positioning and scale.
+monitors use their preferred mode with automatic positioning and scale. Hyprland's
+first-run update window is disabled so it does not cover the desktop or apps.
 
 | Binding | Action |
 | --- | --- |
 | Super + Return | Open Ghostty |
+| Super + Left / Right | Focus the neighboring window and scroll it into view |
+| Super + Tab | Toggle the zoomed-out overview with workspaces stacked vertically |
+| Super + E | Open GNOME Files (Nautilus) |
 | Super + Q | Close the focused window |
 | Super + Shift + E | Log out of the Hyprland session |
 | Super + 1–5 | Switch to a persistent workspace |
@@ -36,6 +40,51 @@ On the NixOS workstation, terminal launch uses `uwsm app` and logout uses
 `uwsm stop`. The standalone configuration uses normal compositor dispatchers.
 Ghostty's appearance is managed by the Matyas Ghostty Home Manager module, which
 also installs Fira Code Nerd Font for the configured font family.
+
+## Window layouts and overview
+
+The default layout is Hyprland's built-in `scrolling`: windows form a horizontal
+tape. One column fills the display; additional columns start at half the display
+width. Focusing a column scrolls it into view. Workspaces 1–5 and newly created
+workspaces inherit this default.
+
+Use Super+Tab to open the native ScrollOverview plugin on the current output.
+It shows live windows at half scale, including off-screen columns, with workspaces
+stacked vertically in the style of Niri. Left/Right select columns; Up/Down move
+between workspaces. Enter focuses the selection; Escape or Super+Tab closes the
+overview. Clicking a window selects it, and windows can be dragged between
+workspaces. The normal column widths remain intact. Noctalia's bar stays visible.
+
+Home Manager owns the plugin and its scoped keyboard controls in
+`modules/home/matyas/desktop/hyprland.nix`; Noctalia no longer owns Super+Tab.
+Set `deployment.hyprland.overview.enable = false` to remove the plugin,
+settings, submap, and shortcut together. Ordinary desktop shortcuts remain
+available while the overview is open.
+
+`hyprland.pkgs.nix` pins the plugin to upstream's compatible revision for
+Hyprland 0.56.2 and builds it against the selected compositor and its libraries.
+When upgrading Hyprland, check the plugin's upstream compatibility pins and run
+the desktop runtime test: evaluation alone cannot establish plugin ABI compatibility.
+
+Change the default in `modules/home/matyas/desktop/hyprland.nix` through
+`wayland.windowManager.hyprland.settings.config.general.layout`. Built-in choices
+include `scrolling`, `dwindle`, `master`, and `monocle`. For an individual workspace,
+add a Lua workspace rule to Home Manager's `extraConfig`, for example:
+
+```lua
+hl.workspace_rule({ workspace = "5", layout = "dwindle" })
+```
+
+For temporary experiments in a running session, use the Lua API:
+
+```sh
+hyprctl eval 'hl.config({ general = { layout = "dwindle" } })'
+hyprctl eval 'hl.config({ general = { layout = "scrolling" } })'
+```
+
+The second command restores scrolling. The legacy `hyprctl keyword` command is
+not supported by this Lua configuration. Put changes you want to keep in Nix
+and rebuild; runtime changes are not the declarative baseline.
 
 ## Noctalia ownership and appearance
 
@@ -144,6 +193,61 @@ Composition tests cover password-login hooks, greetd inheritance, explicit opt-o
 and server independence; deployment tests check persistent home coverage. A system
 build does not establish that an actual login unlocks the keyring. Verify unlock,
 application access, and credential survival across reboot after installation.
+
+## Day-one applications
+
+The workstation selects Chrome, 1Password (desktop and CLI), VS Code, and GNOME
+Files. The base profile permits all unfree packages on both servers and
+workstations. Both standalone Home Manager outputs use the same unrestricted
+package policy.
+
+Chrome handles web links and HTML files. The system installs the official
+1Password extension with Chrome's `normal_installed` policy when both applications
+are selected. It can still be disabled in Chrome. Set
+`deployment.onepassword.browserIntegration = false` to remove that policy.
+Standalone Home Manager users install the extension through the Chrome Web Store;
+Chrome on Linux does not accept per-user extension manifests from Home Manager.
+
+NixOS supplies 1Password's browser and `op` helpers, with Polkit integration scoped
+to Matyas. Home Manager starts `onepassword.service` with `--silent` as part of the
+graphical session. Noctalia displays its tray item. Startup belongs to Nix; leave
+the app's separate “start at login” setting disabled. Session `SSH_AUTH_SOCK` and
+OpenSSH `IdentityAgent` use `~/.1password/agent.sock`, covering terminal and GUI
+clients. Agent forwarding is not enabled.
+
+One-time account setup after installation:
+
+1. Sign into 1Password and keep it running in the system tray.
+2. Enable its SSH agent in Developer settings. For CLI integration, also enable
+   system authentication under Security and CLI integration under Developer.
+3. Check that the browser extension connects to the desktop app.
+4. Authorize the first SSH request through the app.
+
+Private keys and account credentials remain outside Nix. See the official
+[SSH setup](https://www.1password.dev/ssh/get-started) and
+[CLI integration](https://www.1password.dev/cli/app-integration) instructions.
+
+VS Code uses Catppuccin Mocha, Fira Code Nerd Font Mono at size 14, Nix IDE, nixd,
+and the direnv extension. Its settings and extension directory stay writable for
+experiments. Nix applies the baseline at activation and supplies application
+updates. Additional language extensions can be added later. The shared CLI editor
+remains Neovim. Trust your own projects through VS Code's workspace-trust prompt;
+Restricted Mode prevents the Nix IDE and direnv extensions from activating.
+
+GNOME Files handles directories and opens with Super+E. It prefers dark appearance;
+NixOS supplies D-Bus registration and GVfs/udisks support for trash and removable
+devices. Hyprland's desktop portals continue to supply native file pickers.
+
+Pella uses interactive personal-device Tailscale enrollment, without a server auth
+key, server tags, or metrics listener. Run `sudo tailscale up` on the real machine,
+follow the login link, and check `tailscale status`. Its state is covered by
+persistent `/var/lib/tailscale`. The desktop preview stays unenrolled.
+
+Git and Jujutsu use Matyas Cimbulka's author identity and the supplied public SSH
+key at `~/.ssh/signing.pub`. Git signs commits and tags by default; Jujutsu signs its own
+commits. Both tools share local signature-verification trust for the configured
+email and key. The matching private key must be available through 1Password's
+enabled SSH agent. See the [development VCS setup](vcs-configuration.md).
 
 ## Validation
 

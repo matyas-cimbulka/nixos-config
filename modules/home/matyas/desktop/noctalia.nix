@@ -102,7 +102,9 @@
             shadow = { enabled = true; range = 12; render_power = 3; color = "rgba(11111b66)"; };
           };
         };
-        bind = [
+        bind = map (binding: binding // {
+          _args = binding._args ++ lib.optional (config.deployment.hyprland.overview.enable or false) { submap_universal = true; };
+        }) [
           { _args = [ "SUPER + SPACE" (command "panel-toggle launcher") ]; }
           { _args = [ "SUPER + S" (command "panel-toggle control-center") ]; }
           { _args = [ "SUPER + COMMA" (command "settings-toggle") ]; }

@@ -12,6 +12,9 @@ let
 in
 {
   flake.lib.compositionTests.home-noctalia = {
+    leaves-overview-to-compositor = check "The window overview should belong to Hyprland rather than Noctalia's carousel."
+      (!(lib.hasInfix "msg window-switcher" hyprland)
+        && lib.hasInfix "hl.plugin.scrolloverview.overview" hyprland);
     control-center-has-independent-background = check "The control center should have an opaque floating surface independent of the transparent bar."
       (home.programs.noctalia.settings.shell.panel.transparency_mode == "solid"
         && home.programs.noctalia.settings.shell.panel.control_center_placement == "floating");
@@ -37,6 +40,7 @@ in
       (!disabled.config.programs.noctalia.enable
         && !(disabled.config.systemd.user.services ? noctalia)
         && !(disabled.config.xdg.configFile ? "noctalia/config.toml")
+        && !(lib.hasInfix "msg window-switcher" (disabled.config.xdg.configFile."hypr/hyprland.lua".text or ""))
         && !(lib.hasInfix "panel-toggle launcher" (disabled.config.xdg.configFile."hypr/hyprland.lua".text or "")));
   };
 }

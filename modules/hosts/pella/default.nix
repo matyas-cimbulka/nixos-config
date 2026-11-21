@@ -11,6 +11,7 @@
         config.flake.modules.nixos.pella-disko
         config.flake.modules.nixos.ephemeral-root
         config.flake.modules.nixos.pella-storage
+        config.flake.modules.nixos.tailscale
       ];
 
       hardware.facter = {
@@ -19,6 +20,11 @@
       };
 
       networking.hostName = "pella";
+      deployment.tailscale = {
+        enrollment = "interactive";
+        interfaces = [];
+        overrideMetricsIntegration = true;
+      };
       time.timeZone = "Europe/Prague";
 
       system.stateVersion = "26.11";

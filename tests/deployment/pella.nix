@@ -25,9 +25,24 @@ let
   homeSnapshots = machine.services.snapper.configs.home or {};
   systemSnapshots = machine.services.snapper.configs.persist or {};
   reset = machine.boot.initrd.systemd.services.reset-root or {};
+  home = machine.home-manager.users.matyas;
+  identity = { name = "Matyas Cimbulka"; email = "matyas.cimbulka@gmail.com"; };
+  publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHuanqwyg+nSluVQKYa5CsEmxjJLW5JKQosV2D7h1rKP";
 in
 {
   flake.lib.deploymentTests.pella = {
+    personal-vcs-identity-and-signing-key = check "Pella and the standalone workstation home must use Matyas's supplied VCS identity and public signing key."
+      ((home.programs.git.settings.user or {}) == identity
+        && (home.programs.jujutsu.settings.user or {}) == identity
+        && (home.home.file.".ssh/signing.pub".text or "") == "${publicKey}\n"
+        && home.programs.git.signing.allowedSigners == "${identity.email} namespaces=\"git\" ${publicKey}\n"
+        && config.flake.homeConfigurations.matyas-workstation.config.programs.git.settings.user == identity
+        && config.flake.homeConfigurations.matyas-workstation.config.programs.jujutsu.settings.user == identity);
+    personal-tailscale-enrollment = check "Pella should join as a personal device through interactive login and preserve its client state."
+      (machine.services.tailscale.enable && machine.deployment.tailscale.enrollment == "interactive"
+        && machine.services.tailscale.authKeyFile == null && machine.services.tailscale.extraUpFlags == []
+        && !(machine.systemd.services ? tailscaled-autoconnect)
+        && persistsDirectory "/var/lib/tailscale");
     greeter-state-survives-root-reset = check "Pella should preserve greeter appearance and AccountsService metadata across root reset."
       (machine.services.displayManager.noctalia-greeter.enable
         && lib.all persistsDirectory [ "/var/lib/noctalia-greeter" "/var/lib/AccountsService" ]);

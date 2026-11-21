@@ -1,6 +1,9 @@
 { lib, ... }:
 {
-  flake.modules.nixos.base-profile = {
+  flake.modules.nixos.base-profile = { options, ... }: {
+    # MicroVMs reuse their host's configured package set.
+    nixpkgs.config = lib.mkIf (!options.nixpkgs.pkgs.isDefined) { allowUnfree = true; };
+
     nix = {
       settings.experimental-features = [ "nix-command" "flakes" ];
 

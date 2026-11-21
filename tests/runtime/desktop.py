@@ -13,6 +13,7 @@ from test_driver.machine.ocr import perform_ocr_on_screenshot
 def as_user(command):
     return (
         "runuser -u matyas -- env XDG_RUNTIME_DIR=/run/user/1000 "
+        "PATH=/run/wrappers/bin:/etc/profiles/per-user/matyas/bin:/run/current-system/sw/bin "
         "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus "
         f"systemd-run --user --quiet --wait --pipe --collect {command}"
     )
@@ -84,6 +85,14 @@ assert len(monitors) == 1, monitors
 assert monitors[0]["width"] == 1920 and monitors[0]["height"] == 1080, monitors
 pella.screenshot("desktop")
 
+with subtest("password app, tray, and session-wide agent configuration"):
+    pella.wait_until_succeeds(as_user("systemctl --user is-active onepassword.service"))
+    pella.wait_until_succeeds(as_user("python3 /etc/desktop-test/tray.py"))
+    assert "/home/matyas/.1password/agent.sock" in pella.succeed(as_user("printenv SSH_AUTH_SOCK"))
+    assert "identityagent /home/matyas/.1password/agent.sock" in pella.succeed(as_user("ssh -G github.com"))
+    pella.succeed("test -g /run/wrappers/bin/1Password-BrowserSupport; test -g /run/wrappers/bin/op")
+    pella.succeed(as_user("op --version"))
+
 with subtest("unprivileged Nix survives reboot with stale borrowed-store metadata"):
     pella.succeed(as_user("cp -rL /etc/desktop-test/nix /home/matyas/nix-probe"))
     pella.succeed(as_user("chmod u+w /home/matyas/nix-probe"))
@@ -118,6 +127,7 @@ with subtest("unprivileged Nix survives reboot with stale borrowed-store metadat
     assert "Desktop Nix works" in pella.succeed(as_user(command))
 
 with subtest("real terminal binding and keyboard input"):
+    assert json.loads(pella.succeed(as_user("hyprctl -j -i 0 getoption general:layout")))["str"] == "scrolling"
     pella.send_key("meta_l-ret")
     pella.wait_until_succeeds(
         as_user("hyprctl -j -i 0 clients")
@@ -132,9 +142,157 @@ with subtest("real terminal binding and keyboard input"):
     retry(lambda _: "Desktop preview ready" in pella.get_screen_text(), timeout=timedelta(seconds=30))
     pella.screenshot("ghostty")
 
+with subtest("scrolling layout and directional window focus"):
+    original = json.loads(pella.succeed(as_user("hyprctl -j -i 0 activewindow")))["address"]
+    for count in [2, 3]:
+        pella.send_key("meta_l-ret")
+        pella.wait_until_succeeds(as_user("hyprctl -j -i 0 clients")
+            + f" | jq -e '[.[] | select(.class == \"com.mitchellh.ghostty\")] | length == {count}'", timeout=30)
+        # A mapped GTK window can precede shell startup. Wait for Fish's title
+        # before requesting the next single-instance Ghostty window.
+        pella.wait_until_succeeds(as_user("hyprctl -j -i 0 clients")
+            + " | jq -e 'all(.[] | select(.class == \"com.mitchellh.ghostty\"); .title != \"Ghostty\")'", timeout=30)
+    last = json.loads(pella.succeed(as_user("hyprctl -j -i 0 activewindow")))["address"]
+    columns = [client for client in json.loads(pella.succeed(as_user("hyprctl -j -i 0 clients")))
+        if client["class"] == "com.mitchellh.ghostty"]
+    assert all(0.4 * 1920 < client["size"][0] < 0.6 * 1920 and client["size"][1] > 900 for client in columns), columns
+    assert any(client["at"][0] < 0 or client["at"][0] + client["size"][0] > 1920 for client in columns), columns
+    pella.screenshot("scrolling-layout")
+    # Include another workspace in the native, vertically stacked overview.
+    pella.send_key("meta_l-3")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activeworkspace") + " | jq -e '.id == 3'")
+    pella.send_key("meta_l-ret")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 clients")
+        + " | jq -e 'any(.[]; .class == \"com.mitchellh.ghostty\" and .workspace.id == 3)'")
+    pella.send_key("meta_l-1")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activeworkspace") + " | jq -e '.id == 1'")
+    pella.send_key("meta_l-tab")
+    overview = as_user("hyprctl -i 0 submap") + " | grep -x scrolloverview"
+    pella.wait_until_succeeds(overview)
+    plugins = json.loads(pella.succeed(as_user("hyprctl -j -i 0 plugin list")))
+    assert any(plugin["name"] == "scrolloverview" for plugin in plugins), plugins
+    assert not pella.succeed(as_user("hyprctl -i 0 configerrors")).strip()
+    pella.succeed(as_user("hyprctl -j -i 0 layers")
+        + " | jq -e '[.. | objects | select(.namespace? == \"noctalia-window-switcher\")] | length == 0'")
+    # The submap becomes active before the overview animation finishes.
+    time.sleep(1)
+    pella.screenshot("window-overview")
+    pella.send_key("left")
+    pella.send_key("left")
+    pella.send_key("ret")
+    pella.wait_until_fails(overview)
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activewindow") + f" | jq -e '.address == \"{original}\"'")
+    focused = json.loads(pella.succeed(as_user("hyprctl -j -i 0 activewindow")))
+    assert focused["size"] == next(client["size"] for client in columns if client["address"] == original), focused
+    # Down traverses the empty persistent workspace 2 to workspace 3. This must
+    # select a real window on that workspace when the overview closes.
+    pella.send_key("meta_l-tab")
+    pella.wait_until_succeeds(overview)
+    pella.send_key("down")
+    pella.send_key("down")
+    time.sleep(1)
+    pella.screenshot("stacked-workspaces")
+    pella.send_key("ret")
+    pella.wait_until_fails(overview)
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activeworkspace") + " | jq -e '.id == 3'")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activewindow") + " | jq -e '.workspace.id == 3'")
+    pella.send_key("meta_l-tab")
+    pella.wait_until_succeeds(overview)
+    pella.send_key("esc")
+    pella.wait_until_fails(overview)
+    pella.send_key("meta_l-1")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activeworkspace") + " | jq -e '.id == 1'")
+    pella.send_key("meta_l-right")
+    pella.send_key("meta_l-right")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activewindow") + f" | jq -e '.address == \"{last}\"'")
+    pella.send_key("meta_l-tab")
+    pella.wait_until_succeeds(overview)
+    # At half scale the first column is at the left of the centered row.
+    # This exercises the custom submap's pointer-selection dispatcher too.
+    click_at(240, 550)
+    pella.wait_until_fails(overview)
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activewindow") + f" | jq -e '.address == \"{original}\"'")
+    pella.send_key("meta_l-3")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activeworkspace") + " | jq -e '.id == 3'")
+    pella.send_key("meta_l-q")
+    pella.send_key("meta_l-1")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activeworkspace") + " | jq -e '.id == 1'")
+    pella.send_key("meta_l-right")
+    pella.send_key("meta_l-right")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activewindow") + f" | jq -e '.address == \"{last}\"'")
+    pella.send_key("meta_l-left")
+    pella.send_key("meta_l-left")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activewindow") + f" | jq -e '.address == \"{original}\"'")
+    focused = json.loads(pella.succeed(as_user("hyprctl -j -i 0 activewindow")))
+    assert focused["at"][0] >= 0 and focused["at"][0] + focused["size"][0] <= 1920, focused
+    pella.send_key("meta_l-right")
+    pella.send_key("meta_l-right")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activewindow") + f" | jq -e '.address == \"{last}\"'")
+    for count in [2, 1]:
+        pella.send_key("meta_l-q")
+        pella.wait_until_succeeds(as_user("hyprctl -j -i 0 clients")
+            + f" | jq -e '[.[] | select(.class == \"com.mitchellh.ghostty\")] | length == {count}'")
+    assert json.loads(pella.succeed(as_user("hyprctl -j -i 0 activewindow")))["address"] == original
+
+with subtest("day-one applications and editable editor settings"):
+    assert "google-chrome.desktop" in pella.succeed(as_user("xdg-mime query default x-scheme-handler/https"))
+    assert "org.gnome.Nautilus.desktop" in pella.succeed(as_user("xdg-mime query default inode/directory"))
+    pella.succeed(as_user("systemd-run --user --collect --quiet uwsm app -- google-chrome --no-first-run --no-default-browser-check file:///etc/desktop-test/browser.html"))
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 clients") + " | jq -e 'any(.[]; .title | contains(\"Pella browser check\"))'", timeout=60)
+    browser = next(client for client in json.loads(pella.succeed(as_user("hyprctl -j -i 0 clients"))) if "Pella browser check" in client["title"])
+    assert not browser["xwayland"], browser
+    pella.screenshot("chrome")
+    pella.send_key("meta_l-q")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 clients") + " | jq -e 'all(.[]; .title | contains(\"Pella browser check\") | not)'", timeout=30)
+    settings_path = "/home/matyas/.config/Code/User/settings.json"
+    pella.succeed(as_user(f"test -w {settings_path}"))
+    settings = json.loads(pella.succeed(f"cat {settings_path}"))
+    assert settings["nix.enableLanguageServer"] and settings["workbench.colorTheme"] == "Catppuccin Mocha", settings
+    extensions = pella.succeed(as_user("code --list-extensions"))
+    assert "jnoortheen.nix-ide" in extensions and "mkhl.direnv" in extensions, extensions
+    # Use the same session scopes as desktop launchers; a short-lived service can
+    # kill Electron children when its CLI exits. Skip account onboarding in tests.
+    pella.succeed(as_user("systemd-run --user --collect --quiet uwsm app -- code --new-window --skip-welcome --skip-release-notes /etc/desktop-test/editor.nix"))
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 clients") + " | jq -e 'any(.[]; (.class | ascii_downcase) == \"code\")'", timeout=60)
+    editor = next(client for client in json.loads(pella.succeed(as_user("hyprctl -j -i 0 clients"))) if client["class"].lower() == "code")
+    assert not editor["xwayland"], editor
+    retry(lambda _: "Workstation editor ready" in pella.get_screen_text(), timeout=timedelta(seconds=60))
+    # A first file opens in Restricted Mode. Trust this known fixture through the
+    # same UI a user uses for their own code; retain production's trust prompts.
+    retry(lambda _: "Restricted Mode" in pella.get_screen_text(), timeout=timedelta(seconds=30))
+    # Open trust management from the rendered status bar. Typing into a command
+    # palette before its first frame is ready can lose input on slow VM renders.
+    click_at(editor["at"][0] + 100, editor["at"][1] + editor["size"][1] - 12)
+    try:
+        retry(lambda _: "You are in Restricted Mode" in pella.get_screen_text(), timeout=timedelta(seconds=30))
+    except Exception:
+        pella.screenshot("editor-trust-failure")
+        print(pella.get_screen_text())
+        raise
+    pella.send_key("ctrl-ret")
+    # The first window can render before extensions finish loading. Require the
+    # configured Nix language server to start for this document as well.
+    try:
+        pella.wait_until_succeeds(as_user("pgrep -u matyas -x nixd"), timeout=60)
+    except Exception:
+        print(pella.succeed("find /home/matyas/.config/Code/logs -type f -name '*.log' -exec tail -n 30 {} +"))
+        raise
+    pella.send_key("esc")
+    pella.screenshot("vscode")
+    pella.send_key("meta_l-q")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 clients") + " | jq -e 'all(.[]; (.class | ascii_downcase) != \"code\")'", timeout=30)
+    pella.succeed(as_user("mkdir -p /home/matyas/FilesReady"))
+    pella.send_key("meta_l-e")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 clients") + " | jq -e 'any(.[]; .class == \"org.gnome.Nautilus\")'", timeout=60)
+    retry(lambda _: "FilesReady" in pella.get_screen_text(), timeout=timedelta(seconds=30))
+    pella.screenshot("nautilus")
+    pella.send_key("meta_l-q")
+    pella.wait_until_succeeds(as_user("hyprctl -j -i 0 clients") + " | jq -e 'all(.[]; .class != \"org.gnome.Nautilus\")'", timeout=30)
+
 with subtest("numbered workspace bindings"):
     pella.send_key("meta_l-5")
     pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activeworkspace") + " | jq -e '.id == 5'")
+    assert json.loads(pella.succeed(as_user("hyprctl -j -i 0 activeworkspace")))["tiledLayout"] == "scrolling"
     pella.send_key("meta_l-1")
     pella.wait_until_succeeds(as_user("hyprctl -j -i 0 activeworkspace") + " | jq -e '.id == 1'")
     pella.send_key("meta_l-shift-2")

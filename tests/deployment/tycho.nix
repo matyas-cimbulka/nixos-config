@@ -10,6 +10,9 @@ in
 {
   flake.lib.deploymentTests = {
     tycho = {
+      host-and-guests-allow-unfree = check "Tycho and every MicroVM must allow unfree packages through their effective package sets."
+        ((tycho.pkgs.config.allowUnfree or false)
+          && lib.all (name: (guest name).nixpkgs.pkgs.config.allowUnfree or false) names);
       evaluates = builtins.deepSeq tycho.config.system.build.toplevel.drvPath true;
       standalone-home-evaluates = builtins.deepSeq config.flake.homeConfigurations.matyas-server.activationPackage.drvPath true;
       expected-guests-are-registered = check "Tycho must register Anderson, Behemoth, and Thoth."

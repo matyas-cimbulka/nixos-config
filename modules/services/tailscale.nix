@@ -11,6 +11,11 @@ in
       in
       {
         options.deployment.tailscale = {
+          enrollment = lib.mkOption {
+            type = lib.types.enum [ "auth-key" "interactive" ];
+            default = "auth-key";
+            description = "Use deployment credentials for automatic enrollment, or log in interactively as a personal device.";
+          };
           interfaces = lib.mkOption {
             type = lib.types.listOf lib.types.str;
             default = throw "Set deployment.tailscale.interfaces explicitly; use [] for no transport interface openings.";
@@ -36,8 +41,12 @@ in
           (lib.mkIf config.services.tailscale.enable {
             assertions = [
               {
-                assertion = config.services.tailscale.authKeyFile != null;
+                assertion = cfg.enrollment != "auth-key" || config.services.tailscale.authKeyFile != null;
                 message = "The Tailscale feature requires services.tailscale.authKeyFile supplied by the deployment.";
+              }
+              {
+                assertion = cfg.enrollment != "interactive" || config.services.tailscale.authKeyFile == null;
+                message = "Interactive Tailscale enrollment requires services.tailscale.authKeyFile = null.";
               }
               {
                 assertion = !config.services.tailscale.openFirewall;

@@ -12,6 +12,10 @@ let
   guest = mkSystem [ modules.tailscale-microvm ] settings;
   disabled = mkSystem [ modules.tailscale-microvm ] { services.tailscale.enable = false; };
   noKey = extend active { services.tailscale.authKeyFile = lib.mkForce null; };
+  interactive = mkSystem [ modules.tailscale ] {
+    deployment.tailscale = { enrollment = "interactive"; interfaces = []; overrideMetricsIntegration = true; };
+  };
+  interactiveWithKey = extend interactive { services.tailscale.authKeyFile = "/run/test-secrets/unwanted-key"; };
   globalFirewall = extend active { services.tailscale.openFirewall = true; };
   noNft = extend active { networking.nftables.enable = false; };
   noMetricsInterfaces = extend active { deployment.tailscale.metricsInterfaces = lib.mkForce []; };
@@ -27,6 +31,14 @@ let
 in
 {
   flake.lib.compositionTests.tailscale = {
+    personal-enrollment-needs-no-key = check "Interactive Tailscale enrollment should run the client without an auth key, tags, metrics, or automatic login."
+      (interactive.config.services.tailscale.enable && interactive.config.services.tailscale.authKeyFile == null
+        && !(interactive.config.systemd.services ? tailscaled-autoconnect)
+        && !(interactive.config.systemd.services ? tailscale-metrics)
+        && interactive.config.services.tailscale.extraUpFlags == []
+        && !(failedAssertion interactive "The Tailscale feature requires services.tailscale.authKeyFile supplied by the deployment."));
+    personal-enrollment-rejects-server-key = check "Interactive enrollment should reject accidental automatic enrollment credentials."
+      (failedAssertion interactiveWithKey "Interactive Tailscale enrollment requires services.tailscale.authKeyFile = null.");
     explicit-empty-transport-interfaces-is-accepted = check "Explicit empty Tailscale transport interfaces should preserve metrics without UDP openings."
       (let empty = extend active { deployment.tailscale.interfaces = lib.mkForce []; };
        in udp empty "transport0" == [] && ports empty "metrics0" == [ 9250 ]);

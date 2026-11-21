@@ -17,11 +17,16 @@ in
       nixos.hyprland
       nixos.noctalia
       nixos.noctalia-greeter
+      nixos.onepassword
+      nixos.nautilus
       nixos.matyas
     ];
 
     security.sudo.execWheelOnly = true;
-
+    programs = {
+      chromium.enable = lib.mkDefault home.programs.google-chrome.enable;
+      _1password-gui.polkitPolicyOwners = [ "matyas" ];
+    };
     services.displayManager.noctalia-greeter.settings.appearance = lib.mkIf desktopAppearance {
       scheme = lib.mkDefault "Catppuccin";
       theme_mode = lib.mkDefault "dark";

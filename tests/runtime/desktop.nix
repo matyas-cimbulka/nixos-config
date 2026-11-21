@@ -43,6 +43,9 @@ let
       systemPackages = [ pkgs.jq pkgs.libnotify (pkgs.python3.withPackages (packages: [ packages.dbus-python ])) ];
       etc = {
         "desktop-test/keyring.py".source = ./desktop-keyring.py;
+        "desktop-test/tray.py".source = ./desktop-tray.py;
+        "desktop-test/browser.html".text = "<html><title>Pella browser check</title><body>Desktop browser ready</body></html>";
+        "desktop-test/editor.nix".text = "# Workstation editor ready\n{}\n";
         "desktop-test/nix".source = pkgs.writeTextDir "flake.nix" ''
         {
           outputs = _:

@@ -1,0 +1,24 @@
+
+# 2026-11-21 10:42:37.048221
++serial_stdout_off(); exec(open('/home/matyas/Projects/nixos-config/tests/runtime/desktop.py').read().split('\nstart_all()')[0]); start_all(); pella.wait_for_unit('greetd.service'); retry(lambda _: 'password' in greeter_text(), timeout=timedelta(seconds=30)); pella.send_chars('test-only'); pella.send_key('ret'); pella.wait_until_succeeds(as_user('systemctl --user is-active noctalia.service')); pella.send_key('meta_l-ret')
+
+# 2026-11-21 10:43:10.243513
++print(pella.succeed(as_user('hyprctl -j -i 0 clients'))); pella.send_key('meta_l-ret')
+
+# 2026-11-21 10:43:18.816923
++print([(c['address'],c['at'],c['size'],c['hidden']) for c in json.loads(pella.succeed(as_user('hyprctl -j -i 0 clients')))]); pella.send_key('meta_l-ret')
+
+# 2026-11-21 10:43:28.579778
++print([(c['address'],c['at'],c['size'],c['hidden']) for c in json.loads(pella.succeed(as_user('hyprctl -j -i 0 clients')))]); pella.screenshot('three-columns'); print(pella.succeed('journalctl --user -b -n 30 --no-pager'))
+
+# 2026-11-21 10:44:17.952098
++pella.send_key('meta_l-tab')
+
+# 2026-11-21 10:44:26.896229
++pella.screenshot('overview-three'); print(greeter_text(crop='70%x50%+0+0')); print(pella.succeed(as_user('hyprctl -j -i 0 layers')))
+
+# 2026-11-21 10:45:22.926822
++pella.send_key('ret'); print(json.loads(pella.succeed(as_user('hyprctl -j -i 0 activewindow')))['address'])
+
+# 2026-11-21 10:45:39.802230
++exit()
