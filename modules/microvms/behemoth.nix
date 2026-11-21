@@ -18,6 +18,7 @@ in
 
         flakeConfig.flake.modules.nixos.traefik
         flakeConfig.flake.modules.nixos.pocket-id
+        flakeConfig.flake.modules.nixos.teleport-control-plane
       ];
 
       deployment =
@@ -55,6 +56,11 @@ in
               user = "id@cimbulka.net";
               tls = "starttls";
             };
+          };
+
+          teleport-control-plane = {
+            domain = "teleport.cimbulka.net";
+            dataVolume = "teleport-data";
           };
 
           traefik = {

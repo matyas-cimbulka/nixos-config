@@ -48,6 +48,36 @@ in
         && containers.pocket-id.labels."traefik.docker.network" == "proxy"
         && commandValue "--providers.docker.network=" containers.traefik.cmd == "proxy"
         && containers.pocket-id.environment.TRUST_PROXY == proxy.subnet);
+    teleport-routes-through-traefik = check "Behemoth must serve Teleport through Traefik HTTPS without publishing a Teleport host port."
+      (let
+        teleport = containers.teleport-control-plane;
+        labels = teleport.labels;
+      in
+        behemoth.deployment.teleport-control-plane.domain == "teleport.cimbulka.net"
+        && teleport.ports == [] && builtins.elem "proxy" teleport.networks
+        && !(builtins.elem "--insecure-no-tls" teleport.cmd)
+        && labels."traefik.http.services.teleport-control-plane.loadbalancer.server.scheme" == "https"
+        && labels."traefik.http.services.teleport-control-plane.loadbalancer.serverstransport" == "teleport-control-plane@file"
+        && labels."traefik.http.routers.teleport-control-plane.rule" == "Host(`teleport.cimbulka.net`)"
+        && labels."traefik.http.routers.teleport-control-plane.entrypoints" == "websecure"
+        && labels."traefik.http.routers.teleport-control-plane.tls.certresolver" == "letsencrypt"
+        && labels."traefik.http.services.teleport-control-plane.loadbalancer.server.port" == "3080");
+    teleport-origin-tls-is-verified = check "Traefik must trust only the Teleport origin certificate for this backend, without access to its private key."
+      (let
+        teleport = containers.teleport-control-plane;
+        cfg = behemoth.deployment.teleport-control-plane;
+        transport = behemoth.deployment.traefik.dynamicConfig.http.serversTransports.teleport-control-plane;
+        mount = lib.findFirst (lib.hasSuffix ":/etc/teleport/teleport.yaml:ro") (throw "Missing Teleport config mount.") teleport.volumes;
+        settings = builtins.fromJSON (builtins.readFile (lib.removeSuffix ":/etc/teleport/teleport.yaml:ro" mount));
+        certService = "teleport-origin-tls.service";
+      in
+        transport.serverName == cfg.domain && !(transport.insecureSkipVerify or false)
+        && transport.rootCAs == [ "/etc/traefik/teleport-origin.pem" ]
+        && settings.proxy_service.https_keypairs == [{ cert_file = "/etc/teleport/origin/cert.pem"; key_file = "/etc/teleport/origin/key.pem"; }]
+        && builtins.elem "/run/teleport-origin-tls:/etc/teleport/origin:ro" teleport.volumes
+        && lib.filter (lib.hasPrefix "/run/teleport-origin-tls") containers.traefik.volumes == [ "/run/teleport-origin-tls/cert.pem:/etc/traefik/teleport-origin.pem:ro" ]
+        && lib.all (container: let unit = behemoth.systemd.services.${container.serviceName}; in
+          builtins.elem certService unit.requires && builtins.elem certService unit.after) [ teleport containers.traefik ]);
     pocket-id-app-is-not-published-on-host = check "Co-located Pocket ID must publish only its separate metrics endpoint."
       (containers.pocket-id.ports == [ "${toString behemoth.deployment.pocket-id.metricsPort}:${toString behemoth.deployment.pocket-id.metricsPort}" ]);
     metrics-and-traces-remain-enabled = check "Behemoth must retain Pocket ID metrics and both application trace senders."
