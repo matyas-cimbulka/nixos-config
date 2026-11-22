@@ -3,7 +3,7 @@ let
   flakeConfig = config;
 in
 {
-  flake.modules.nixos.behemoth = { config, ... }:
+  flake.modules.nixos.behemoth = { config, lib, ... }:
     let
       lanInterface = config.deployment.microvm.interfaceName;
     in
@@ -19,6 +19,8 @@ in
         flakeConfig.flake.modules.nixos.traefik
         flakeConfig.flake.modules.nixos.pocket-id
         flakeConfig.flake.modules.nixos.teleport-control-plane
+        flakeConfig.flake.modules.nixos.teleport-node
+        flakeConfig.flake.modules.nixos.teleport-enrollment
       ];
 
       deployment =
@@ -63,6 +65,11 @@ in
             dataVolume = "teleport-data";
           };
 
+          teleport-node = {
+            proxyServer = "${config.deployment.teleport-control-plane.domain}:443";
+            labels.type = "vm";
+          };
+
           traefik = {
             portsByInterface = {
               ${lanInterface} = [ 80 443 8080 ];
@@ -97,7 +104,11 @@ in
         vcpu = 4;
         mem = 16384;
 
-        volumes = [
+        volumes = lib.optional config.services.teleport.enable {
+          image = "behemoth-teleport-node.img";
+          mountPoint = "/var/lib/teleport";
+          size = 512;
+        } ++ [
           {
             image = "behemoth-tailscale.img";
             mountPoint = "/var/lib/tailscale";

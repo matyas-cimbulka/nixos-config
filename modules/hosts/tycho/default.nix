@@ -40,6 +40,7 @@ in
       services.tailscale.authKeyFile = config.sops.secrets.tailscale-server-oauth.path;
 
       deployment = {
+        behemothTeleportEnrollmentPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILAg1YxMHN7nZYXHMnOIPeA6LuPCIxCAQPDcFia2OqKW";
         tailscale = {
           interfaces = [ "wan0" "microvm-br" ];
           metricsInterfaces = [ "microvm-br" ];

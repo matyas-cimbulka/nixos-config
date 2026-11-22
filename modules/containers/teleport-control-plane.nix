@@ -8,6 +8,12 @@
       traefikIntegrationEnabled = hasTraefikTransport && !cfg.overrideTraefikIntegration;
       originDirectory = "/run/teleport-origin-tls";
       trustFile = "/etc/traefik/teleport-origin.pem";
+      # A document marker tells Teleport's YAML-or-JSON decoder this is a YAML stream.
+      startupResources = builtins.toFile "teleport-enrollment.json" (
+        "---\n" + lib.concatMapStringsSep "\n---\n" builtins.toJSON cfg.startupResources
+      );
+      containerResources = "/etc/teleport/enrollment.json";
+      applyStartupResources = cfg.startupResources != [];
       originDependency = {
         requires = [ "teleport-origin-tls.service" ];
         after = [ "teleport-origin-tls.service" ];
@@ -49,6 +55,11 @@
           type = lib.types.strMatching "[a-z0-9-]+(\\.[a-z0-9-]+)+";
           description = "Public DNS hostname of the Teleport proxy and WebAuthn relying party.";
         };
+        startupResources = lib.mkOption {
+          type = lib.types.listOf (lib.types.attrsOf (pkgs.formats.json {}).type);
+          default = [];
+          description = "Public Teleport resources applied at startup. Do not include secrets.";
+        };
         dataVolume = lib.mkOption {
           type = lib.types.str;
           description = "Docker volume name or host directory for persistent Teleport state.";
@@ -72,8 +83,10 @@
         virtualisation.oci-containers.containers.teleport-control-plane = {
           image = "public.ecr.aws/gravitational/teleport-distroless:18.11.10";
           entrypoint = "/usr/local/bin/teleport";
-          volumes = [ "${configFile}:/etc/teleport/teleport.yaml:ro" "${cfg.dataVolume}:/var/lib/teleport" ];
-          cmd = [ "start" "--config=/etc/teleport/teleport.yaml" ];
+          volumes = [ "${configFile}:/etc/teleport/teleport.yaml:ro" "${cfg.dataVolume}:/var/lib/teleport" ]
+            ++ lib.optional applyStartupResources "${startupResources}:${containerResources}:ro";
+          cmd = [ "start" "--config=/etc/teleport/teleport.yaml" ]
+            ++ lib.optional applyStartupResources "--apply-on-startup=${containerResources}";
 
           labels = lib.mkIf traefikIntegrationEnabled {
             "traefik.enable" = "true";
