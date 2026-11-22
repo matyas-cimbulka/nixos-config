@@ -3,13 +3,17 @@ let
   flakeConfig = config;
 in
 {
-  flake.modules.nixos.thoth = { config, ... }:
+  flake.modules.nixos.thoth = { config, lib, ... }:
     let
       lanInterface = config.deployment.microvm.interfaceName;
+      mcp = config.deployment.grafana.mcp;
+      mcpEnabled = mcp.enable && config.services.grafana.enable;
     in
     {
       imports = [
         flakeConfig.flake.modules.nixos.server-profile
+        flakeConfig.flake.modules.nixos.teleport-node
+        flakeConfig.flake.modules.nixos.teleport-enrollment
         flakeConfig.flake.modules.nixos.microvm-guest
 
         flakeConfig.flake.modules.nixos.prometheus
@@ -24,6 +28,7 @@ in
       };
 
       deployment = {
+        teleport-node.labels.type = "vm";
         microvm.interfaceName = "lan0";
         alloy = {
           httpInterfaces = [ lanInterface ];
@@ -48,13 +53,27 @@ in
         };
       };
 
+      assertions = lib.optional mcpEnabled {
+        assertion = config.services.teleport.enable;
+        message = "Thoth's Grafana MCP deployment requires an enrolled Teleport agent.";
+      };
+
       services = {
+        teleport.settings.app_service = lib.mkIf mcpEnabled {
+          enabled = true;
+          apps = [{
+            name = "grafana-mcp";
+            uri = "mcp+http://127.0.0.1:${toString mcp.port}/mcp";
+            labels.access = "grafana-mcp";
+          }];
+        };
         grafana.settings."auth.generic_oauth" = {
           client_id = "2e3eef0c-40ca-451b-a466-8ebdd62d8e61";
           auth_url = "https://id.cimbulka.net/authorize";
           token_url = "https://id.cimbulka.net/api/oidc/token";
           api_url = "https://id.cimbulka.net/api/oidc/userinfo";
           jwk_set_url = "https://id.cimbulka.net/.well-known/jwks.json";
+          role_attribute_path = "contains(groups || `[]`, 'grafan-admin') && 'Admin' || contains(groups || `[]`, 'admin') && 'Editor' || 'Viewer'";
         };
         prometheus.scrapeConfigs = [
           {
@@ -104,7 +123,11 @@ in
           }
         ];
 
-        volumes = [
+        volumes = lib.optional config.services.teleport.enable {
+          image = "thoth-teleport-node.img";
+          mountPoint = "/var/lib/teleport";
+          size = 512;
+        } ++ [
           {
             image = "thoth-grafana.img";
             mountPoint = "/var/lib/grafana";

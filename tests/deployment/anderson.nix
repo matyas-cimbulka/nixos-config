@@ -34,6 +34,14 @@ in
     host-public-dns-aliases-follow-ingress = check "Tycho's internal DNS aliases must route ID and Grafana hostnames to Behemoth."
       (builtins.elem "${behemoth.deployment.pocket-id.domain},${internalHost behemoth}" host.services.dnsmasq.settings.cname
         && builtins.elem "${(guest "thoth").deployment.grafana.domain},${internalHost behemoth}" host.services.dnsmasq.settings.cname);
+    teleport-dns-follows-internal-ingress = check "Anderson must route the Teleport hostname to Tycho's internal DNS without changing the LAN's default DNS route."
+      (let
+        lanNetwork = anderson.systemd.network.networks.lan;
+        domain = behemoth.deployment.teleport-control-plane.domain;
+      in builtins.elem "~${domain}" lanNetwork.domains
+        && builtins.elem "~${internalDomain}" lanNetwork.domains
+        && !(lanNetwork.networkConfig.DNSDefaultRoute or false)
+        && builtins.elem "${domain},${internalHost behemoth}" host.services.dnsmasq.settings.cname);
     guest-resolver-keeps-host-dns = check "Anderson must retain host DNS resolution without Tailscale overwriting it or the stub occupying port 53."
       (!anderson.services.resolved.settings.Resolve.DNSStubListener
         && builtins.elem "--accept-dns=false" anderson.services.tailscale.extraSetFlags

@@ -21,6 +21,8 @@ in
         flakeConfig.flake.modules.nixos.server-profile
         flakeConfig.flake.modules.nixos.sops
         flakeConfig.flake.modules.nixos.tailscale-server
+        flakeConfig.flake.modules.nixos.teleport-node
+        flakeConfig.flake.modules.nixos.teleport-enrollment
       ];
 
       hardware.facter = {
@@ -40,6 +42,13 @@ in
       services.tailscale.authKeyFile = config.sops.secrets.tailscale-server-oauth.path;
 
       deployment = {
+        enableGrafanaMcp = true;
+        teleportEnrollmentPublicKeys = {
+          anderson = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJOEEX6iVT9Sbxc8XlFtawwW5E+jAudg153g9TgkpGZb";
+          behemoth = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILAg1YxMHN7nZYXHMnOIPeA6LuPCIxCAQPDcFia2OqKW";
+          thoth = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKoIgSE9ZS46l6PilXQNBOq0WLy90/PkgsTKnWJ9yYQH";
+          tycho = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH0T0TgqxKSeQX6zdguVylcUQEYLkZdPNZsfddyyZB6Y";
+        };
         tailscale = {
           interfaces = [ "wan0" "microvm-br" ];
           metricsInterfaces = [ "microvm-br" ];
