@@ -10,7 +10,7 @@ let
   grafana = behemoth.deployment.traefik.dynamicConfig.http;
   fixtureKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILRrD9u9iWKpWBbFj4gL+KgQF7jCKfVkLGXc3N2QvIAR";
   enrollmentHost = (config.flake.nixosConfigurations.tycho.extendModules {
-    modules = [{ deployment.behemothTeleportEnrollmentPublicKey = lib.mkForce fixtureKey; }];
+    modules = [{ deployment.teleportEnrollmentPublicKeys.behemoth = lib.mkForce fixtureKey; }];
   }).config;
   enrollment = import ./helpers.nix { host = enrollmentHost; inherit lib; };
   enrolledBehemoth = enrollment.guest "behemoth";
@@ -24,7 +24,8 @@ let
     && !(lib.any (lib.hasPrefix "teleport-join-key:") host.systemd.services."microvm@behemoth".serviceConfig.LoadCredential)
     && controlPlane.autoStart
     && builtins.elem "--apply-on-startup=/etc/teleport/enrollment.json" controlPlane.cmd
-    && lib.all (resource: resource.kind != "token") guest.deployment.teleport-control-plane.startupResources;
+    && lib.all (resource: resource.kind != "token" || resource.metadata.name != "behemoth-node")
+      guest.deployment.teleport-control-plane.startupResources;
   startupResources = let
     teleport = enrolledBehemoth.virtualisation.oci-containers.containers.teleport-control-plane;
     mount = lib.findFirst (lib.hasSuffix ":/etc/teleport/enrollment.json:ro") (throw "Missing startup manifest mount.") teleport.volumes;
@@ -97,10 +98,10 @@ in
       (lib.all (name: builtins.stringLength "opt/io.systemd.credentials/${name}" <= 55)
         (builtins.attrNames enrolledBehemoth.microvm.credentialFiles));
     pending-enrollment-does-not-block-control-plane = check "No enrollment key should be required before the deployment supplies a public key."
-      (withoutEnrollment { deployment.behemothTeleportEnrollmentPublicKey = lib.mkForce null; });
+      (withoutEnrollment { deployment.teleportEnrollmentPublicKeys.behemoth = lib.mkForce null; });
     disabled-agent-does-not-forward-enrollment-key = check "Disabling the native agent must remove its enrollment wiring, even with a public key configured."
       (withoutEnrollment {
-        deployment.behemothTeleportEnrollmentPublicKey = lib.mkForce fixtureKey;
+        deployment.teleportEnrollmentPublicKeys.behemoth = lib.mkForce fixtureKey;
         microvm.vms.behemoth.config.services.teleport.enable = lib.mkForce false;
       });
     teleport-declares-matyas-ssh-role = check "Matyas must be allowed to use the Unix login matyas on all enrolled SSH nodes."
@@ -121,7 +122,7 @@ in
       (let
         behemoth = enrolledBehemoth;
         teleport = behemoth.virtualisation.oci-containers.containers.teleport-control-plane;
-        token = lib.findFirst (resource: resource.kind == "token") (throw "Missing enrollment token in startup manifest.") startupResources;
+        token = lib.findFirst (resource: resource.kind == "token" && resource.metadata.name == "behemoth-node") (throw "Missing enrollment token in startup manifest.") startupResources;
       in
         token.kind == "token" && token.version == "v2"
         && token.metadata.name == behemoth.services.teleport.settings.teleport.join_params.token_name
@@ -130,6 +131,33 @@ in
         && !(enrollmentHost.sops.secrets ? behemoth-teleport-enrollment-public-key)
         && token.spec.bound_keypair.recovery.mode == "insecure"
         && builtins.elem "--apply-on-startup=/etc/teleport/enrollment.json" teleport.cmd);
+    remaining-machines-enroll = check "Anderson, Thoth and Tycho must have matching startup tokens and durable native identities."
+      (let
+        endpoint = "${behemoth.deployment.teleport-control-plane.domain}:443";
+        tokens = builtins.filter (resource: resource.kind == "token") startupResources;
+        nodeMatches = name: type: machine: machine.services.teleport.enable
+          && machine.services.teleport.settings.teleport.proxy_server == endpoint
+          && machine.services.teleport.settings.ssh_service.labels == { inherit type; }
+          && machine.services.teleport.settings.teleport.join_params.token_name == "${name}-node"
+          && lib.any (token: token.metadata.name == "${name}-node"
+            && token.spec.roles == [ "Node" ] && token.spec.join_method == "bound_keypair"
+            && token.spec.bound_keypair.recovery.mode == "insecure"
+            && token.spec.bound_keypair.onboarding.initial_public_key == host.deployment.teleportEnrollmentPublicKeys.${name}) tokens;
+        vmMatches = name: let vm = guest name; in nodeMatches name "vm" vm
+          && lib.any (volume: volume.mountPoint == "/var/lib/teleport") vm.microvm.volumes
+          && enrollment.credentialWiring {
+            vm = name; service = "teleport"; name = "teleport-join-key";
+            source = enrollmentHost.sops.secrets."${name}-teleport-enrollment-key".path;
+            consumedPaths = [ (enrollment.guest name).services.teleport.settings.teleport.join_params.bound_keypair.static_key_path ];
+          }
+          && lib.all (credential: builtins.stringLength "opt/io.systemd.credentials/${credential}" <= 55)
+            (builtins.attrNames vm.microvm.credentialFiles);
+        tychoKey = host.sops.secrets.tycho-teleport-enrollment-key.path;
+      in vmMatches "anderson" && vmMatches "thoth" && nodeMatches "tycho" "server" host
+        && builtins.elem "teleport-join-key:${tychoKey}" host.systemd.services.teleport.serviceConfig.LoadCredential
+        && host.services.teleport.settings.teleport.join_params.bound_keypair.static_key_path == "/run/credentials/teleport.service/teleport-join-key"
+        && builtins.elem "sops-install-secrets.service" host.systemd.services.teleport.after
+        && builtins.elem "${behemoth.deployment.teleport-control-plane.domain},${internalHost behemoth}" host.services.dnsmasq.settings.cname);
     teleport-routes-through-traefik = check "Behemoth must serve Teleport through Traefik HTTPS without publishing a Teleport host port."
       (let
         teleport = containers.teleport-control-plane;

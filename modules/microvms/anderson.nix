@@ -4,13 +4,15 @@ let
 in
 {
   # Internal DNS and DHCP server
-  flake.modules.nixos.anderson = { config, ... }:
+  flake.modules.nixos.anderson = { config, lib, ... }:
     let
       lanInterface = config.deployment.microvm.interfaceName;
     in
     {
       imports = [
         flakeConfig.flake.modules.nixos.server-profile
+        flakeConfig.flake.modules.nixos.teleport-node
+        flakeConfig.flake.modules.nixos.teleport-enrollment
         flakeConfig.flake.modules.nixos.microvm-guest
 
         flakeConfig.flake.modules.nixos.tailscale-microvm
@@ -18,6 +20,7 @@ in
       ];
 
       deployment = {
+        teleport-node.labels.type = "vm";
         microvm.interfaceName = "lan0";
         tailscale = {
           interfaces = [ lanInterface ];
@@ -44,7 +47,11 @@ in
         vcpu = 1;
         mem = 512;
 
-        volumes = [
+        volumes = lib.optional config.services.teleport.enable {
+          image = "anderson-teleport-node.img";
+          mountPoint = "/var/lib/teleport";
+          size = 512;
+        } ++ [
           {
             image = "anderson-tailscale.img";
             mountPoint = "/var/lib/tailscale";

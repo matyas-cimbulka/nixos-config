@@ -27,7 +27,7 @@ image on Behemoth with `--network host` and a root-only bind mount. Do not use
 `docker exec` for key generation: the running container's bridge path to the
 proxy times out.
 
-Set `deployment.behemothTeleportEnrollmentPublicKey` in Tycho's deployment
+Set `deployment.teleportEnrollmentPublicKeys.behemoth` in Tycho's deployment
 configuration to the `ssh-ed25519 …` line printed by `tbot` (algorithm and key
 data only). The public key is not a SOPS secret. Until it is set, the native
 agent is disabled and the startup manifest omits Behemoth's join token.
@@ -40,6 +40,20 @@ copies. Deploy Tycho and restart Behemoth
 so it receives the new credentials. The Docker control plane applies the public
 key on startup, and the native agent receives the private key separately. Do not
 run `tctl create` for Behemoth or delete its existing `/var/lib/teleport` volume.
+
+## Anderson, Thoth, and Tycho
+
+Use the same procedure with a distinct keypair for each machine. Set the
+corresponding `deployment.teleportEnrollmentPublicKeys` entry and store the
+private key as `<machine>-teleport-enrollment-key` in Tycho's SOPS file. Tycho
+provides the private key to each guest at boot and loads its own key directly
+from SOPS. All four agents use the cluster hostname; Tycho's internal DNS
+resolves it to Behemoth's bridge address without changing the TLS name.
+
+After deploying Tycho, restart Behemoth first to apply the new tokens, then
+restart Anderson and Thoth to load their credentials. The Tycho agent can
+retry enrollment once Behemoth is back. Check `tsh ls` and test each node as
+`matyas` before relying on Teleport for access.
 
 ## Manual registration for other nodes
 

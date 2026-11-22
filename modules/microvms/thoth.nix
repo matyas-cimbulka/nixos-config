@@ -3,13 +3,15 @@ let
   flakeConfig = config;
 in
 {
-  flake.modules.nixos.thoth = { config, ... }:
+  flake.modules.nixos.thoth = { config, lib, ... }:
     let
       lanInterface = config.deployment.microvm.interfaceName;
     in
     {
       imports = [
         flakeConfig.flake.modules.nixos.server-profile
+        flakeConfig.flake.modules.nixos.teleport-node
+        flakeConfig.flake.modules.nixos.teleport-enrollment
         flakeConfig.flake.modules.nixos.microvm-guest
 
         flakeConfig.flake.modules.nixos.prometheus
@@ -24,6 +26,7 @@ in
       };
 
       deployment = {
+        teleport-node.labels.type = "vm";
         microvm.interfaceName = "lan0";
         alloy = {
           httpInterfaces = [ lanInterface ];
@@ -104,7 +107,11 @@ in
           }
         ];
 
-        volumes = [
+        volumes = lib.optional config.services.teleport.enable {
+          image = "thoth-teleport-node.img";
+          mountPoint = "/var/lib/teleport";
+          size = 512;
+        } ++ [
           {
             image = "thoth-grafana.img";
             mountPoint = "/var/lib/grafana";
