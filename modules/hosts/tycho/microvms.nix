@@ -46,6 +46,7 @@ in
       privateKeyFile = "/run/credentials/teleport.service/teleport-join-key";
       teleportDomain = machines.behemoth.deployment.teleport-control-plane.domain;
       proxyServer = "${teleportDomain}:443";
+      matrixOidcCredential = "synapse-oidc-client-secret";
       vmEnrollment = name: { config, ... }: {
         services.teleport.enable = lib.mkIf (!hasKey name) false;
         deployment.teleport-enrollment = { tokenName = tokenName name; inherit privateKeyFile; };
@@ -92,6 +93,7 @@ in
           cloudflare-dns-api-token = { };
           pocket-id-encryption-key = { };
           pocket-id-smtp-password = { };
+          ${matrixOidcCredential} = { };
           grafana-secret-key = { };
           grafana-oidc-client-secret = { };
           grafana-mcp-token = lib.mkIf grafanaMcpEnabled { };
@@ -134,6 +136,7 @@ in
           deployment = {
             traefik.environmentFile = "/run/credentials/docker-traefik.service/cloudflare-dns.env";
             pocket-id.environmentFile = "/run/credentials/docker-pocket-id.service/pocket-id.env";
+            mas.clientSecretFile = "/run/credentials/docker-mas.service/${matrixOidcCredential}";
             teleport-control-plane.startupResources = [{
               kind = "role";
               version = "v7";
@@ -158,12 +161,14 @@ in
             };
             docker-pocket-id.serviceConfig.ImportCredential = [ "pocket-id.env" ];
             docker-traefik.serviceConfig.ImportCredential = [ "cloudflare-dns.env" ];
+            docker-mas.serviceConfig.ImportCredential = [ matrixOidcCredential ];
           };
 
           microvm.credentialFiles = {
             tailscale-vm-oauth = "/run/credentials/microvm@behemoth.service/tailscale-vm-oauth";
             "cloudflare-dns.env" = "/run/credentials/microvm@behemoth.service/cloudflare-dns.env";
             "pocket-id.env" = "/run/credentials/microvm@behemoth.service/pocket-id.env";
+            ${matrixOidcCredential} = "/run/credentials/microvm@behemoth.service/${matrixOidcCredential}";
           };
         };
 
@@ -224,6 +229,7 @@ in
             "tailscale-vm-oauth:${config.sops.secrets.tailscale-vm-oauth.path}"
             "cloudflare-dns.env:${config.sops.templates."cloudflare-dns.env".path}"
             "pocket-id.env:${config.sops.templates."pocket-id.env".path}"
+            "${matrixOidcCredential}:${config.sops.secrets.${matrixOidcCredential}.path}"
           ] ++ lib.optional (enroll "behemoth") (credential "behemoth");
         };
 

@@ -68,6 +68,7 @@ in
       (builtins.elem "proxy" containers.pocket-id.networks && builtins.elem "proxy" containers.traefik.networks
         && containers.pocket-id.labels."traefik.http.routers.pocket-id.rule" == "Host(`${behemoth.deployment.pocket-id.domain}`)"
         && containers.pocket-id.labels."traefik.http.services.pocket-id.loadbalancer.server.port" == "1411"
+        && builtins.elem "--network-alias=${behemoth.deployment.pocket-id.domain}" containers.traefik.extraOptions
         && containers.pocket-id.labels."traefik.docker.network" == "proxy"
         && commandValue "--providers.docker.network=" containers.traefik.cmd == "proxy"
         && containers.pocket-id.environment.TRUST_PROXY == proxy.subnet);
@@ -202,6 +203,79 @@ in
         && grafana.services.grafana.loadBalancer.servers == [ {
           url = "http://${internalHost thoth}:${toString thoth.services.grafana.settings.server.http_port}";
         } ]);
+    element-web-and-matrix-discovery-use-traefik = check "Behemoth must serve Element and exact-path Matrix discovery over HTTPS without publishing a container port."
+      (containers ? element-web && (let
+        element = containers.element-web;
+        labels = element.labels;
+        readMount = target: let
+          suffix = ":${target}:ro";
+          mount = lib.findFirst (lib.hasSuffix suffix) (throw "Missing read-only Element mount at ${target}.") element.volumes;
+        in builtins.fromJSON (builtins.readFile (lib.removeSuffix suffix mount));
+        discovery = readMount "/app/.well-known/matrix/client";
+        settings = readMount "/app/config.json";
+      in element.ports == [ ] && builtins.elem "proxy" element.networks
+        && labels."traefik.http.routers.element-web.rule" == "Host(`element.cimbulka.net`)"
+        && labels."traefik.http.routers.matrix-client-discovery.rule" == "Host(`cimbulka.net`) && Path(`/.well-known/matrix/client`)"
+        && lib.all (router: labels."traefik.http.routers.${router}.entrypoints" == "websecure"
+          && labels."traefik.http.routers.${router}.service" == "element-web") [ "element-web" "matrix-client-discovery" ]
+        && labels."traefik.http.routers.matrix-client-discovery.middlewares" == "matrix-client-discovery"
+        && labels."traefik.http.middlewares.matrix-client-discovery.headers.customresponseheaders.Content-Type" == "application/json"
+        && labels."traefik.http.middlewares.matrix-client-discovery.headers.customresponseheaders.Access-Control-Allow-Origin" == "*"
+        && discovery == { "m.homeserver".base_url = "https://matrix.cimbulka.net"; }
+        && settings.default_server_config."m.homeserver" == discovery."m.homeserver"
+        && settings.disable_custom_urls));
+    synapse-client-ingress-and-private-database = check "Synapse must serve only client/media routes and reach PostgreSQL on a dedicated private network."
+      (containers ? synapse && containers ? matrix-postgres && (let
+        synapse = containers.synapse;
+        database = containers.matrix-postgres;
+        suffix = ":/etc/synapse/homeserver.yaml:ro";
+        mount = lib.findFirst (lib.hasSuffix suffix) (throw "Missing Synapse settings mount.") synapse.volumes;
+        settings = builtins.fromJSON (builtins.readFile (lib.removeSuffix suffix mount));
+      in synapse.ports == [ ] && database.ports == [ ]
+        && sameMembers synapse.networks [ "proxy" "matrix-db" ] && database.networks == [ "matrix-db" ]
+        && lib.hasInfix "--internal" behemoth.systemd.services.matrix-db-network.script
+        && synapse.labels."traefik.http.routers.synapse.rule" == "Host(`matrix.cimbulka.net`) && (PathPrefix(`/_matrix/client/`) || PathPrefix(`/_matrix/media/`) || PathPrefix(`/_synapse/client/rendezvous/`))"
+        && synapse.labels."traefik.http.routers.synapse.entrypoints" == "websecure"
+        && settings.server_name == "cimbulka.net"
+        && settings.public_baseurl == "https://matrix.cimbulka.net/"
+        && settings.listeners == [{ port = 8008; type = "http"; tls = false; x_forwarded = true; resources = [{ names = [ "client" ]; }]; }]
+        && settings.federation_domain_whitelist == [ ] && settings.trusted_key_servers == [ ]
+        && !settings.enable_registration && !settings.allow_guest_access && !settings.password_config.enabled
+        && settings.database.name == "psycopg2" && settings.database.args.host == "matrix-postgres"
+        && settings.database.args.user == "synapse" && !(settings.database.args ? password)
+        && builtins.elem "/run/matrix-db/pgpass:${settings.database.args.passfile}:ro" synapse.volumes
+        && builtins.elem "/var/lib/matrix-synapse:/data" synapse.volumes
+        && builtins.elem "/var/lib/matrix-postgres-mas/data:/var/lib/postgresql/data" database.volumes
+        && lib.all (path: lib.any (volume: volume.mountPoint == path) behemoth.microvm.volumes)
+          [ "/var/lib/matrix-synapse" "/var/lib/matrix-postgres" "/var/lib/matrix-postgres-mas" ]));
+    mas-handles-matrix-authentication = check "MAS must handle Matrix OAuth and legacy login routes while Synapse supports QR rendezvous."
+      (let
+        synapse = containers.synapse;
+        suffix = ":/etc/synapse/homeserver.yaml:ro";
+        mount = lib.findFirst (lib.hasSuffix suffix) (throw "Missing Synapse settings mount.") synapse.volumes;
+        settings = builtins.fromJSON (builtins.readFile (lib.removeSuffix suffix mount));
+        labels = containers.mas.labels;
+      in (settings.matrix_authentication_service.enabled or false)
+        && !(settings ? oidc_providers)
+        && settings.matrix_authentication_service.endpoint == "http://mas:8080"
+        && settings.experimental_features.msc4108_enabled
+        && builtins.elem "/run/matrix-authentication/synapse-secret:${settings.matrix_authentication_service.secret_path}:ro" synapse.volumes
+        && labels."traefik.http.routers.mas.rule" == "Host(`mas.cimbulka.net`)"
+        && labels."traefik.http.routers.mas-compat.rule" == "Host(`matrix.cimbulka.net`) && PathRegexp(`^/_matrix/client/(r0|v3|unstable)/(login|logout|logout/all|refresh)$`)"
+        && labels."traefik.http.routers.mas-compat.priority" == "1000"
+        && credentialWiring {
+          vm = "behemoth"; service = containers.mas.serviceName; name = "synapse-oidc-client-secret";
+          source = host.sops.secrets.synapse-oidc-client-secret.path;
+          consumedPaths = lib.splitString " " behemoth.systemd.services.${containers.mas.serviceName}.preStart;
+        });
+    mas-has-private-database = check "MAS and its dedicated database must start without publishing container ports."
+      (containers ? mas && containers ? mas-postgres
+        && containers.mas.autoStart && containers.mas-postgres.autoStart
+        && containers.mas.ports == [ ] && containers.mas-postgres.ports == [ ]
+        && containers.mas.networks == [ "proxy" "mas-db" ] && containers.mas-postgres.networks == [ "mas-db" ]
+        && builtins.elem "mas-postgres" containers.mas.dependsOn
+        && lib.hasInfix "--internal" behemoth.systemd.services.mas-db-network.script
+        && lib.any (volume: volume.mountPoint == "/var/lib/matrix-authentication") behemoth.microvm.volumes);
     dns-server-follows-host-bridge = check "Traefik container DNS must use Tycho's bridge DNS service."
       (behemoth.deployment.traefik.dnsServer == deploymentHelpers.bridgeAddress
         && builtins.elem "--dns=${deploymentHelpers.bridgeAddress}" containers.traefik.extraOptions);
