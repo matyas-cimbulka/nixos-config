@@ -5,6 +5,7 @@ pocket-id-encryption-key: ENC[AES256_GCM,data:RCgQqFIiMaWLLrVfwPqns8H/Gm50GnkSjW
 pocket-id-smtp-password: ENC[AES256_GCM,data:4LNa3hI9OGw1r1ScLSfKa3N1/oIgVhbMAO9ExKz2FcA=,iv:7w1if76NiMGZ/l31wVHi0z+r0xSuppuR0PcOqCCQeZ8=,tag:Skjf39autPoUZjNAy/E/VQ==,type:str]
 grafana-secret-key: ENC[AES256_GCM,data:cXg79E68AD1B8gmzCKH5GV7aczisaA+1rA4YYAFQDjWbV63aU4mBQ9TNNU3i6ZEiFqPnnM3RdkYNG7qiuQKztw==,iv:UT76amzjtyT8515x31uQ40B+m+O7xzdnCrg1jEJYAM4=,tag:s27asG7wqJ/ON7Q3H+qazg==,type:str]
 grafana-oidc-client-secret: ENC[AES256_GCM,data:Vq2XPLSU/K2TnZTPq4kHKdExCoBwx5nAl8NoG7+T9Es=,iv:RaRhxiONm/2gqGTN2VoXKRCcMMo5fttm64QZuoGkxu4=,tag:4SWk2gsjB3lTAaPMMpEv+A==,type:str]
+grafana-mcp-token: ENC[AES256_GCM,data:1YryKXD5/PN48OP+W6IobSGb6ZwbURG3Me6j1LjN9alFIJf2sP5FHkz3M/nTmQ==,iv:IQGIk0TCgjaw5rie+xnvlhQBCeQfqKPUuJtCmWx8dhg=,tag:rVrXMmCDU8IjeRK7O8w7Jw==,type:str]
 anderson-teleport-enrollment-key: ENC[AES256_GCM,data:LgEAxj4nBjS7sAf9bjsjzOmEcANWtgzLPBvn6r8mepltaozvjAmobYyB0pYj3TCPyCL9TmFqbcppMN/qHvKN6jdkuRqC0ng7++7pB5dvHoN9HHDil1+vtlfpvrx7h16nN7HDtHyn5JUh0qlXkI+JvGRPkcdGyUc=,iv:XFBsLyhocds/ttSXuQ4l6kXFzXYcEFzRNostEzpDw+M=,tag:w/T9W0PMAWj+y3ui73dPgA==,type:str]
 behemoth-teleport-enrollment-key: ENC[AES256_GCM,data:uQ+8/GDnuY+9aKNV752P4hfa6cyIQDHgi1CmlD8h5vGyZHM2mr4bW+wBzcwT5wTLQGRKMTjpM7oThrjThii5Ds2QIC42EJLTjVW9vqIML63vGvKd4y1bAjC959wZN1jWHDoY9eCGhqvlt3AqbK86ZWl7g0FO07Y=,iv:PVe2s01bbXVHKN+ACxwyeD9otaV2RRZ4mCVoFX2GP70=,tag:7MQSoG0kb7gLzO278gDV4g==,type:str]
 thoth-teleport-enrollment-key: ENC[AES256_GCM,data:ZdULA9x9xmd3OXh+x/7oQRncwquEqpAGb6mFaMLT4JNpGdvQnU+QGj0H4aXKV5EmcYkTtg7wAbhnI+rUhAHLcai7p5fZitaxqR9s/InYaELnV9Y+YdRUewtiIif3e9rbpISPP8Gsp5mFwWhUSQB8QAc8BdFylQ8=,iv:wXPpV2v7WRQbo9nHzgqaT4yUcWCYGWHILb83sX/Evec=,tag:SwXJxDa2FLK0Rkb9aJP78g==,type:str]
@@ -29,7 +30,7 @@ sops:
             Hs3W56drq6amf4NY98zioVKs2JyMe/4PV2GWZtdUid0Ub9Jdgz7jXg==
             -----END AGE ENCRYPTED FILE-----
           recipient: age1maq4f3627stzj3ph5rdj657u36xqjcqy2m9fx5nktr2a9x7h2ugq54mu5a
-    lastmodified: "2026-11-22T11:25:22Z"
-    mac: ENC[AES256_GCM,data:L6XVs2Z1rki73TrfhuNackXir+ukwgf/r9w19qnV8cwGZ0KpwxczcsHra6ncTBdQyb51Ijt76tyT+J17z7a0lJgyyKJ8UYAFIoEZS/cXtSSQLnfns7PdpGgEXFvFJTLZ2PpBGG2Fbe/6uiDRFKG+KTFmEJMAes9IAntQ7ezVFJM=,iv:nU4tAOdJitrLvpPomBwomwZELHkXHMQIAvbatyq16Ic=,tag:ACQDoD8XhXtb7A04Rpm8Iw==,type:str]
+    lastmodified: "2026-11-22T12:48:07Z"
+    mac: ENC[AES256_GCM,data:pjRzSQcvFj/PhhrlRBXwSgPZkArxxvwu48/TmVJAWFJ5rtKZArDGErqwt/V+a0dIgYKjRSI4wtVvAvlJ9HnhFd+hOGvsfwBT6f2WzcSAKwFGvY3bSwELjcle/JoczoNO0bJHdGz0pdfYslTvlIaL5oE8ci8m6+lVW0gus9hqvK8=,iv:xwYQ2MxDA/i0wqxD1bzseLpSkfALRKgK5pmjaqB9NjA=,tag:TolC4+/keNt5/Ss76MbHwg==,type:str]
     unencrypted_suffix: _unencrypted
     version: 3.13.3

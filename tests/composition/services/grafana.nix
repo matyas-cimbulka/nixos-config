@@ -35,6 +35,10 @@ let
       jwk_set_url = "https://id.example.invalid/jwks";
     };
   };
+  mcp = extend active {
+    deployment.grafana.mcp = { enable = true; tokenFile = "/run/test-secrets/grafana-mcp"; };
+  };
+  missingMcpToken = extend active { deployment.grafana.mcp.enable = true; };
   missingOauth = extend active {
     deployment.grafana = { overrideOAuthIntegration = lib.mkForce false; oauthClientSecretFile = "/run/test-secrets/oauth"; };
   };
@@ -52,6 +56,15 @@ in
         && active.config.services.grafana.settings.security.secret_key == "$__file{/run/test-secrets/grafana-key}");
     interface-specific-port = check "Grafana should open HTTP only on deployment interfaces."
       (ports active "web0" == [ 3000 ] && active.config.networking.firewall.allowedTCPPorts == []);
+    mcp-is-loopback-only = check "Grafana MCP should use a loopback listener and Grafana API, without opening a firewall port."
+      (lib.hasInfix "--address=127.0.0.1:8000" (mcp.config.systemd.services.grafana-mcp.serviceConfig.ExecStart or "")
+        && mcp.config.systemd.services.grafana-mcp.environment.GRAFANA_URL == "http://127.0.0.1:3000"
+        && ports mcp "web0" == [ 3000 ] && mcp.config.networking.firewall.allowedTCPPorts == []);
+    mcp-requires-runtime-token = check "Grafana MCP should consume a runtime token file and require its path."
+      (mcp.config.systemd.services.grafana-mcp.environment.GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE == "/run/test-secrets/grafana-mcp"
+        && failsEvaluation missingMcpToken.config.systemd.services.grafana-mcp.environment.GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE);
+    mcp-is-opt-in = check "Grafana alone should not run the MCP server."
+      (!(active.config.systemd.services ? grafana-mcp));
     no-backends-means-no-data-sources = check "Grafana alone should not provision unavailable local data sources."
       (sources active == []);
     native-backends-activate-data-sources = check "Grafana should provision all enabled native local backends."

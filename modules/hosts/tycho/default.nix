@@ -42,6 +42,7 @@ in
       services.tailscale.authKeyFile = config.sops.secrets.tailscale-server-oauth.path;
 
       deployment = {
+        enableGrafanaMcp = true;
         teleportEnrollmentPublicKeys = {
           anderson = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJOEEX6iVT9Sbxc8XlFtawwW5E+jAudg153g9TgkpGZb";
           behemoth = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILAg1YxMHN7nZYXHMnOIPeA6LuPCIxCAQPDcFia2OqKW";

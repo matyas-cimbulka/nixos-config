@@ -6,6 +6,8 @@ in
   flake.modules.nixos.thoth = { config, lib, ... }:
     let
       lanInterface = config.deployment.microvm.interfaceName;
+      mcp = config.deployment.grafana.mcp;
+      mcpEnabled = mcp.enable && config.services.grafana.enable;
     in
     {
       imports = [
@@ -51,13 +53,27 @@ in
         };
       };
 
+      assertions = lib.optional mcpEnabled {
+        assertion = config.services.teleport.enable;
+        message = "Thoth's Grafana MCP deployment requires an enrolled Teleport agent.";
+      };
+
       services = {
+        teleport.settings.app_service = lib.mkIf mcpEnabled {
+          enabled = true;
+          apps = [{
+            name = "grafana-mcp";
+            uri = "mcp+http://127.0.0.1:${toString mcp.port}/mcp";
+            labels.access = "grafana-mcp";
+          }];
+        };
         grafana.settings."auth.generic_oauth" = {
           client_id = "2e3eef0c-40ca-451b-a466-8ebdd62d8e61";
           auth_url = "https://id.cimbulka.net/authorize";
           token_url = "https://id.cimbulka.net/api/oidc/token";
           api_url = "https://id.cimbulka.net/api/oidc/userinfo";
           jwk_set_url = "https://id.cimbulka.net/.well-known/jwks.json";
+          role_attribute_path = "contains(groups || `[]`, 'grafan-admin') && 'Admin' || contains(groups || `[]`, 'admin') && 'Editor' || 'Viewer'";
         };
         prometheus.scrapeConfigs = [
           {

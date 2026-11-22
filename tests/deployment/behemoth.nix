@@ -111,12 +111,12 @@ in
         metadata.name = "matyas-ssh";
         spec.allow = { logins = [ "matyas" ]; node_labels."*" = "*"; };
       } startupResources);
-    teleport-declares-matyas-role-assignments = check "Declare Matyas's SSH and existing admin roles without managing auth secrets or creating an admin user."
+    teleport-declares-matyas-role-assignments = check "Declare Matyas's existing roles and Grafana MCP dashboard edit access without managing auth secrets."
       (builtins.filter (resource: resource.kind == "user") startupResources == [{
         kind = "user";
         version = "v2";
         metadata.name = "matyas";
-        spec.roles = [ "editor" "auditor" "matyas-ssh" ];
+        spec.roles = [ "editor" "auditor" "matyas-ssh" "grafana-mcp-repo" ];
       }]);
     teleport-applies-matching-public-key-resource = check "The control plane must apply the same node resource name Behemoth uses, with only the public key."
       (let
@@ -140,7 +140,8 @@ in
           && machine.services.teleport.settings.ssh_service.labels == { inherit type; }
           && machine.services.teleport.settings.teleport.join_params.token_name == "${name}-node"
           && lib.any (token: token.metadata.name == "${name}-node"
-            && token.spec.roles == [ "Node" ] && token.spec.join_method == "bound_keypair"
+            && token.spec.roles == (if name == "thoth" then [ "Node" "App" ] else [ "Node" ])
+            && token.spec.join_method == "bound_keypair"
             && token.spec.bound_keypair.recovery.mode == "insecure"
             && token.spec.bound_keypair.onboarding.initial_public_key == host.deployment.teleportEnrollmentPublicKeys.${name}) tokens;
         vmMatches = name: let vm = guest name; in nodeMatches name "vm" vm

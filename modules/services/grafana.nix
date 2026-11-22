@@ -1,11 +1,10 @@
 {
   flake.modules.nixos.grafana =
-    { config, lib, ... }:
+    { config, lib, pkgs, ... }:
     let
       cfg = config.deployment.grafana;
       oauth = config.services.grafana.settings."auth.generic_oauth";
-      datasource =
-        name: uid: address: port:
+      httpUrl = address: port:
         let
           host =
             if address == "::" then
@@ -17,13 +16,14 @@
             else
               address;
           urlHost = if lib.hasInfix ":" host then "[${host}]" else host;
-        in
-        {
-          inherit name uid;
-          type = uid;
-          access = "proxy";
-          url = "http://${urlHost}:${toString port}";
-        };
+        in "http://${urlHost}:${toString port}";
+      datasource = name: uid: address: port: {
+        inherit name uid;
+        type = uid;
+        access = "proxy";
+        url = httpUrl address port;
+      };
+      grafanaServer = config.services.grafana.settings.server;
     in
     {
       options.deployment.grafana = {
@@ -61,6 +61,18 @@
           description = "Absolute runtime path to Grafana's signing key, readable by the Grafana service. The deployment supplies the file and startup ordering.";
         };
 
+        mcp = {
+          enable = lib.mkEnableOption "the local Grafana MCP server";
+          port = lib.mkOption {
+            type = lib.types.port;
+            default = 8000;
+            description = "Loopback port of the Grafana MCP server.";
+          };
+          tokenFile = lib.mkOption {
+            type = lib.types.strMatching "/(run|var/lib)/.+";
+            description = "Runtime file containing the Grafana service account token, readable by grafana-mcp.";
+          };
+        };
         oauthClientSecretFile = lib.mkOption {
           type = lib.types.strMatching "/.*";
           description = "Absolute runtime path to Grafana's OAuth client secret, readable by the Grafana service. The deployment supplies the file and startup ordering.";
@@ -69,6 +81,22 @@
 
       config = lib.mkMerge [
         { services.grafana.enable = lib.mkDefault true; }
+        (lib.mkIf (cfg.mcp.enable && config.services.grafana.enable) {
+          systemd.services.grafana-mcp = {
+            wantedBy = [ "multi-user.target" ];
+            wants = [ "grafana.service" ];
+            after = [ "grafana.service" ];
+            environment = {
+              GRAFANA_URL = httpUrl grafanaServer.http_addr grafanaServer.http_port;
+              GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE = cfg.mcp.tokenFile;
+            };
+            serviceConfig = {
+              DynamicUser = true;
+              Restart = "on-failure";
+              ExecStart = "${lib.getExe pkgs.mcp-grafana} --transport=streamable-http --address=127.0.0.1:${toString cfg.mcp.port} --enabled-tools=search,dashboard,datasource,prometheus,loki";
+            };
+          };
+        })
         (lib.mkIf config.services.grafana.enable {
           assertions =
             map
@@ -129,7 +157,7 @@
                 email_attribute_path = "email";
                 name_attribute_path = "name";
 
-                role_attribute_path = "contains(groups || `[]`, 'admin') && 'Editor' || 'Viewer'";
+                role_attribute_path = lib.mkDefault "contains(groups || `[]`, 'admin') && 'Editor' || 'Viewer'";
                 role_attribute_strict = true;
                 skip_org_role_sync = false;
                 allow_assign_grafana_admin = false;

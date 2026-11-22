@@ -1,4 +1,4 @@
-{ deploymentHelpers, lib, ... }:
+{ config, deploymentHelpers, lib, ... }:
 let
   inherit (deploymentHelpers) host guest check credentialWiring sameMembers internalHost targets job tcpPorts bridgeAddress commandValue;
   thoth = guest "thoth";
@@ -15,10 +15,49 @@ let
   lokiEndpoint = "http://${internalHost thoth}:${toString thoth.services.loki.configuration.server.http_listen_port}/loki/api/v1/push";
   tempoEndpoint = "${internalHost thoth}:${toString thoth.deployment.tempo.otlpPort}";
   oauth = thoth.services.grafana.settings."auth.generic_oauth";
+  disabledHost = (config.flake.nixosConfigurations.tycho.extendModules {
+    modules = [{ deployment.enableGrafanaMcp = lib.mkForce false; }];
+  }).config;
+  disabledThoth = disabledHost.microvm.vms.thoth.config.config;
+  mcpResources = behemoth.deployment.teleport-control-plane.startupResources;
+  resource = kind: name: lib.findFirst (r: r.kind == kind && r.metadata.name == name) {} mcpResources;
   idUrl = "https://${behemoth.deployment.pocket-id.domain}";
 in
 {
   flake.lib.deploymentTests.thoth = {
+    grafana-mcp-credential-wiring = credentialWiring {
+      vm = "thoth"; service = "grafana-mcp"; name = "grafana-mcp-token";
+      source = host.sops.secrets.grafana-mcp-token.path;
+      consumedPaths = [ thoth.systemd.services.grafana-mcp.environment.GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE ];
+    };
+    grafana-mcp-opt-out = check "Disabling Grafana MCP should remove its service, credential, and Teleport app."
+      (!(disabledThoth.systemd.services ? grafana-mcp) && !(disabledHost.sops.secrets ? grafana-mcp-token)
+        && !(disabledThoth.services.teleport.settings ? app_service));
+    grafana-mcp-teleport-registration = check "Thoth should register the loopback MCP app using its existing node identity and an expanded join token."
+      (thoth.services.teleport.settings.ssh_service.enabled
+        && thoth.services.teleport.settings.app_service.enabled
+        && thoth.services.teleport.settings.app_service.apps == [{
+          name = "grafana-mcp";
+          uri = "mcp+http://127.0.0.1:8000/mcp";
+          labels.access = "grafana-mcp";
+        }]
+        && (resource "token" "thoth-node").spec.roles == [ "Node" "App" ]);
+    grafana-mcp-bot-roles = check "Each bot should have only its Grafana MCP role, and only the repo role should allow dashboard writes."
+      (let
+        repo = (resource "role" "grafana-mcp-repo").spec.allow;
+        debug = (resource "role" "grafana-mcp-debug").spec.allow;
+      in
+        (resource "bot" "grafana-mcp-repo").spec.roles == [ "grafana-mcp-repo" ]
+        && (resource "bot" "grafana-mcp-debug").spec.roles == [ "grafana-mcp-debug" ]
+        && repo.app_labels == { access = "grafana-mcp"; } && debug.app_labels == repo.app_labels
+        && debug.mcp.tools == [
+          "search_dashboards" "get_dashboard_by_uid" "get_dashboard_panel_queries"
+          "get_dashboard_property" "get_dashboard_summary" "list_datasources" "get_datasource"
+          "query_prometheus" "list_prometheus_metric_metadata" "list_prometheus_metric_names"
+          "list_prometheus_label_names" "list_prometheus_label_values"
+          "query_loki_logs" "list_loki_label_names" "list_loki_label_values"
+        ]
+        && repo.mcp.tools == debug.mcp.tools ++ [ "update_dashboard" ]);
     grafana-signing-key-wiring = credentialWiring {
       vm = "thoth"; service = "grafana"; name = "grafana-secret-key";
       source = host.sops.secrets.grafana-secret-key.path;
@@ -46,6 +85,9 @@ in
         && oauth.token_url == "${idUrl}/api/oidc/token"
         && oauth.api_url == "${idUrl}/api/oidc/userinfo"
         && oauth.jwk_set_url == "${idUrl}/.well-known/jwks.json");
+    grafana-oauth-maps-dedicated-org-admin-group = check "Pocket ID grafan-admin must grant organization Admin, while admin remains Editor and server admin stays disabled."
+      (oauth.role_attribute_path == "contains(groups || `[]`, 'grafan-admin') && 'Admin' || contains(groups || `[]`, 'admin') && 'Editor' || 'Viewer'"
+        && !oauth.allow_assign_grafana_admin && !oauth.skip_org_role_sync);
     resolver-keeps-bridge-as-default-dns-route = check "Thoth must allow bridge DNS to resolve the public Pocket ID hostname used by OAuth."
       thoth.systemd.network.networks.lan.networkConfig.DNSDefaultRoute;
     system-scrape-targets-follow-exporters = check "Thoth must scrape local Alloy and each deployed remote Alloy using its effective port."
