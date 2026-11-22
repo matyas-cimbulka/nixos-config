@@ -14,11 +14,14 @@
         else
           address;
       selfHost = if lib.hasInfix ":" host then "[${host}]" else host;
+      systemTarget = machine: address: {
+        targets = [ address ];
+        labels.machine = machine;
+      };
       systemTargets =
-        lib.optionals (config.services.alloy.enable && !cfg.overrideAlloyIntegration) [
-          "127.0.0.1:${toString (config.deployment.alloy.httpPort or 12345)}"
-        ]
-        ++ cfg.systemTargets;
+        lib.optional (config.services.alloy.enable && !cfg.overrideAlloyIntegration)
+          (systemTarget config.networking.hostName "127.0.0.1:${toString (config.deployment.alloy.httpPort or 12345)}")
+        ++ lib.mapAttrsToList systemTarget cfg.systemTargets;
     in
     {
       options.deployment.prometheus = {
@@ -28,9 +31,9 @@
           description = "Interfaces permitted to reach the Prometheus API.";
         };
         systemTargets = lib.mkOption {
-          type = lib.types.listOf lib.types.str;
-          default = [ ];
-          description = "Remote Alloy Unix-exporter endpoints to scrape, in host:port form.";
+          type = lib.types.attrsOf lib.types.nonEmptyStr;
+          default = { };
+          description = "Remote Alloy Unix-exporter endpoints (host:port), keyed by machine name.";
         };
         overrideAlloyIntegration = lib.mkOption {
           type = lib.types.bool;
@@ -60,7 +63,7 @@
             ++ lib.optional (systemTargets != [ ]) {
               job_name = "system";
               metrics_path = "/api/v0/component/prometheus.exporter.unix.system/metrics";
-              static_configs = [ { targets = systemTargets; } ];
+              static_configs = systemTargets;
             };
           };
         })

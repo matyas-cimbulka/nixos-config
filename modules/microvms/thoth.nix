@@ -41,11 +41,11 @@ in
         loki.interfaces = [ lanInterface ];
         prometheus = {
           interfaces = [ lanInterface ];
-          systemTargets = [
-            "10.77.0.1:12345"
-            "anderson.internal.cimbulka.net:12345"
-            "behemoth.internal.cimbulka.net:12345"
-          ];
+          systemTargets = {
+            tycho = "10.77.0.1:12345";
+            anderson = "anderson.internal.cimbulka.net:12345";
+            behemoth = "behemoth.internal.cimbulka.net:12345";
+          };
         };
         tempo = {
           apiInterfaces = [ lanInterface ];

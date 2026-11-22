@@ -95,6 +95,14 @@ in
         && sameMembers (targets thoth "system")
           ([ "127.0.0.1:${toString thoth.deployment.alloy.httpPort}" ] ++ exporterTargets (machine: machine.deployment.alloy.httpPort))
         && (job thoth "system").metrics_path == "/api/v0/component/prometheus.exporter.unix.system/metrics");
+    system-scrape-targets-have-machine-labels = check "Each system scrape address must carry its machine name as a static target label."
+      (let
+        configs = (job thoth "system").static_configs;
+        expected = lib.zipLists (remoteMachines ++ [ thoth ])
+          (exporterTargets (machine: machine.deployment.alloy.httpPort) ++ [ "127.0.0.1:${toString thoth.deployment.alloy.httpPort}" ]);
+      in lib.all ({ fst, snd }: lib.any (entry:
+        builtins.elem snd entry.targets && (entry.labels.machine or null) == fst.networking.hostName
+      ) configs) expected);
     tailscale-scrape-targets-follow-exporters = check "Thoth must scrape each deployed Tailscale metrics listener using its effective port."
       (lib.all (machine: machine.services.tailscale.enable && !machine.deployment.tailscale.overrideMetricsIntegration) remoteMachines
         && sameMembers (targets thoth "tailscale") (exporterTargets (machine: machine.deployment.tailscale.metricsPort))

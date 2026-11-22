@@ -6,7 +6,7 @@ let
   disabled = mkSystem [ modules.prometheus ] { services.prometheus.enable = false; };
   missingInterface = mkSystem [ modules.prometheus ] {};
   localAlloy = extend active { services.alloy.enable = true; };
-  remote = extend active { deployment.prometheus.systemTargets = [ "remote.example.invalid:12345" ]; };
+  remote = extend active { deployment.prometheus.systemTargets.remote = "remote.example.invalid:12345"; };
   mixed = extend remote { services.alloy.enable = true; };
   optOut = extend mixed { deployment.prometheus.overrideAlloyIntegration = true; };
   custom = extend active { services.prometheus = { listenAddress = "::"; port = 19090; }; };
