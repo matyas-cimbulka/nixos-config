@@ -57,6 +57,7 @@ in
           httpInterfaces = [ "microvm-br" ];
           lokiEndpoint = "http://thoth.internal.cimbulka.net:3100/loki/api/v1/push";
         };
+        grafanaHookshotPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINTRrCFX2urhwxxa2l5FRR54ZMeagy+IHAH6vkXLUcYM";
       };
 
       systemd.services.tailscaled-autoconnect = lib.mkIf config.services.tailscale.enable {

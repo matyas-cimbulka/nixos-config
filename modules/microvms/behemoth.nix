@@ -6,6 +6,8 @@ in
   flake.modules.nixos.behemoth = { config, lib, ... }:
     let
       lanInterface = config.deployment.microvm.interfaceName;
+      hookshotAppEnabled = config.services.teleport.enable;
+      hookshotOriginPort = 9900;
     in
     {
       imports = [
@@ -19,6 +21,7 @@ in
         flakeConfig.flake.modules.nixos.traefik
         flakeConfig.flake.modules.nixos.element-web
         flakeConfig.flake.modules.nixos.synapse
+        flakeConfig.flake.modules.nixos.hookshot
         flakeConfig.flake.modules.nixos.mas
         flakeConfig.flake.modules.nixos.pocket-id
         flakeConfig.flake.modules.nixos.teleport-control-plane
@@ -65,6 +68,14 @@ in
               secretFile = "/run/matrix-authentication/synapse-secret";
               secretService = "mas-state.service";
             };
+          };
+
+          hookshot = {
+            serverName = config.deployment.synapse.serverName;
+            operator = "@matyas:${config.deployment.synapse.serverName}";
+            dataDirectory = "/var/lib/matrix-hookshot";
+            webhookUrlPrefix = "http://127.0.0.1:9900/webhook/";
+            webhookLoopbackPort = if hookshotAppEnabled then hookshotOriginPort else null;
           };
 
           mas = {
@@ -129,6 +140,15 @@ in
           };
         };
 
+      services.teleport.settings.app_service = lib.mkIf hookshotAppEnabled {
+        enabled = true;
+        apps = [{
+          name = "hookshot-webhook";
+          uri = "http://127.0.0.1:${toString hookshotOriginPort}";
+          labels.access = "hookshot-webhook";
+        }];
+      };
+
       # Local containers reach Pocket ID through Traefik without hairpinning via Tailscale.
       virtualisation.oci-containers.containers.traefik.extraOptions =
         lib.optional (!config.deployment.pocket-id.overrideTraefikIntegration)
@@ -169,6 +189,11 @@ in
             image = "behemoth-matrix-postgres-mas.img";
             mountPoint = config.deployment.synapse.databaseDirectory;
             size = 10240;
+          }
+          {
+            image = "behemoth-hookshot.img";
+            mountPoint = config.deployment.hookshot.dataDirectory;
+            size = 256;
           }
           {
             image = "behemoth-mas.img";

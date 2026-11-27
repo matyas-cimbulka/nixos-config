@@ -127,7 +127,7 @@ in
       in
         token.kind == "token" && token.version == "v2"
         && token.metadata.name == behemoth.services.teleport.settings.teleport.join_params.token_name
-        && token.spec.roles == [ "Node" ] && token.spec.join_method == "bound_keypair"
+        && token.spec.roles == [ "Node" "App" ] && token.spec.join_method == "bound_keypair"
         && token.spec.bound_keypair.onboarding.initial_public_key == fixtureKey
         && !(enrollmentHost.sops.secrets ? behemoth-teleport-enrollment-public-key)
         && token.spec.bound_keypair.recovery.mode == "insecure"
@@ -141,7 +141,7 @@ in
           && machine.services.teleport.settings.ssh_service.labels == { inherit type; }
           && machine.services.teleport.settings.teleport.join_params.token_name == "${name}-node"
           && lib.any (token: token.metadata.name == "${name}-node"
-            && token.spec.roles == (if name == "thoth" then [ "Node" "App" ] else [ "Node" ])
+            && token.spec.roles == (if builtins.elem name [ "behemoth" "thoth" ] then [ "Node" "App" ] else [ "Node" ])
             && token.spec.join_method == "bound_keypair"
             && token.spec.bound_keypair.recovery.mode == "insecure"
             && token.spec.bound_keypair.onboarding.initial_public_key == host.deployment.teleportEnrollmentPublicKeys.${name}) tokens;
@@ -276,6 +276,28 @@ in
         && builtins.elem "mas-postgres" containers.mas.dependsOn
         && lib.hasInfix "--internal" behemoth.systemd.services.mas-db-network.script
         && lib.any (volume: volume.mountPoint == "/var/lib/matrix-authentication") behemoth.microvm.volumes);
+    hookshot-registration-is-private = check "Hookshot must share its runtime registration with Synapse without publishing its appservice listener."
+      (containers ? hookshot && (let
+        hookshot = containers.hookshot;
+        synapse = containers.synapse;
+        suffix = ":/etc/synapse/homeserver.yaml:ro";
+        mount = lib.findFirst (lib.hasSuffix suffix) (throw "Missing Synapse settings mount.") synapse.volumes;
+        settings = builtins.fromJSON (builtins.readFile (lib.removeSuffix suffix mount));
+      in hookshot.ports == lib.optional behemoth.services.teleport.enable "127.0.0.1:9900:9000"
+        && !(hookshot.labels ? "traefik.enable")
+        && builtins.elem "proxy" hookshot.networks && builtins.elem "synapse" hookshot.dependsOn
+        && settings.app_service_config_files == [ "/etc/synapse/appservice-0.json" ]
+        && builtins.elem "/run/hookshot/registration.json:/etc/synapse/appservice-0.json:ro" synapse.volumes
+        && builtins.elem "hookshot-state.service" behemoth.systemd.services.${synapse.serviceName}.requires
+        && lib.any (volume: volume.mountPoint == "/var/lib/matrix-hookshot") behemoth.microvm.volumes));
+    hookshot-teleport-origin-is-loopback-only = check "Only an enrolled Behemoth agent may publish the Hookshot webhook listener as a Teleport app."
+      (let
+        app = enrolledBehemoth.services.teleport.settings.app_service or {};
+        hookshot = enrolledBehemoth.virtualisation.oci-containers.containers.hookshot;
+      in (app.enabled or false)
+        && lib.any (entry: entry.name == "hookshot-webhook" && entry.uri == "http://127.0.0.1:9900"
+          && entry.labels.access == "hookshot-webhook") app.apps
+        && hookshot.ports == [ "127.0.0.1:9900:9000" ]);
     dns-server-follows-host-bridge = check "Traefik container DNS must use Tycho's bridge DNS service."
       (behemoth.deployment.traefik.dnsServer == deploymentHelpers.bridgeAddress
         && builtins.elem "--dns=${deploymentHelpers.bridgeAddress}" containers.traefik.extraOptions);

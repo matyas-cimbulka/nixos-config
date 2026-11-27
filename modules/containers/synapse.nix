@@ -8,6 +8,9 @@
       credentials = "/run/matrix-db";
       masEnabled = cfg.mas != null;
       databaseHost = "matrix-postgres";
+      appServices = lib.imap0 (index: registration: registration // {
+        target = "/etc/synapse/appservice-${toString index}.json";
+      }) cfg.appServices;
       settings = builtins.toFile "synapse-homeserver.yaml" (builtins.toJSON ({
         server_name = cfg.serverName;
         public_baseurl = "https://${cfg.domain}/";
@@ -37,6 +40,7 @@
         url_preview_enabled = false;
         report_stats = false;
         push.include_content = false;
+        app_service_config_files = map (registration: registration.target) appServices;
       } // lib.optionalAttrs masEnabled {
         matrix_authentication_service = {
           enabled = true;
@@ -78,6 +82,16 @@
           type = lib.types.strMatching "/.+";
           description = "Persistent host directory for PostgreSQL data and its generated credentials.";
         };
+        appServices = lib.mkOption {
+          type = lib.types.listOf (lib.types.submodule {
+            options = {
+              file = lib.mkOption { type = lib.types.strMatching "/.+"; };
+              service = lib.mkOption { type = lib.types.strMatching ".+\\.service"; };
+            };
+          });
+          default = [ ];
+          description = "Runtime application service registrations and their generating units.";
+        };
         mas = lib.mkOption {
           type = lib.types.nullOr (lib.types.submodule {
             options = {
@@ -118,7 +132,8 @@
               "${settings}:/etc/synapse/homeserver.yaml:ro"
               "${cfg.dataDirectory}:/data"
               "${credentials}/pgpass:${credentials}/pgpass:ro"
-            ] ++ lib.optional masEnabled "${cfg.mas.secretFile}:/run/synapse/mas-secret:ro";
+            ] ++ lib.optional masEnabled "${cfg.mas.secretFile}:/run/synapse/mas-secret:ro"
+              ++ map (registration: "${registration.file}:${registration.target}:ro") appServices;
             labels = lib.mkIf traefikEnabled {
               "traefik.enable" = "true";
               "traefik.docker.network" = "proxy";
@@ -153,6 +168,8 @@
           # Docker startup ordering does not wait for PostgreSQL initialization.
           ${containers.synapse.serviceName} = lib.mkMerge [ prerequisites {
             serviceConfig.RestartSec = "5s";
+            requires = map (registration: registration.service) appServices;
+            after = map (registration: registration.service) appServices;
           } (lib.mkIf masEnabled {
             requires = [ cfg.mas.secretService ];
             after = [ cfg.mas.secretService ];

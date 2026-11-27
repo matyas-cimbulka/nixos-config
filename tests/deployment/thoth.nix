@@ -21,10 +21,29 @@ let
   disabledThoth = disabledHost.microvm.vms.thoth.config.config;
   mcpResources = behemoth.deployment.teleport-control-plane.startupResources;
   resource = kind: name: lib.findFirst (r: r.kind == kind && r.metadata.name == name) {} mcpResources;
+  tunnelHost = (config.flake.nixosConfigurations.tycho.extendModules {
+    modules = [{ deployment.grafanaHookshotPublicKey = lib.mkForce "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILRrD9u9iWKpWBbFj4gL+KgQF7jCKfVkLGXc3N2QvIAR"; }];
+  }).config;
+  tunnel = import ./helpers.nix { host = tunnelHost; inherit lib; };
   idUrl = "https://${behemoth.deployment.pocket-id.domain}";
 in
 {
   flake.lib.deploymentTests.thoth = {
+    grafana-hookshot-tunnel-is-dedicated = check "Grafana needs a loopback-only Teleport tunnel with credentials dedicated to Hookshot."
+      (let
+        unit = (tunnel.guest "thoth").systemd.services.grafana-hookshot-tunnel;
+        settings = builtins.fromJSON (builtins.readFile unit.environment.TBOT_CONFIG_FILE);
+        resources = (tunnel.guest "behemoth").deployment.teleport-control-plane.startupResources;
+        find = kind: lib.findFirst (r: r.kind == kind && r.metadata.name == "grafana-hookshot") {} resources;
+      in settings.services == [{ type = "application-tunnel"; app_name = "hookshot-webhook"; listen = "tcp://127.0.0.1:9900"; }]
+        && (find "role").spec.allow == { app_labels.access = "hookshot-webhook"; }
+        && (find "bot").spec.roles == [ "grafana-hookshot" ]
+        && (find "token").spec.bot_name == "grafana-hookshot"
+        && tunnel.credentialWiring {
+          vm = "thoth"; service = "grafana-hookshot-tunnel"; name = "hookshot-tbot-key";
+          source = tunnelHost.sops.secrets.hookshot-tbot-key.path;
+          consumedPaths = [ settings.onboarding.bound_keypair.static_private_key_path ];
+        });
     grafana-mcp-credential-wiring = credentialWiring {
       vm = "thoth"; service = "grafana-mcp"; name = "grafana-mcp-token";
       source = host.sops.secrets.grafana-mcp-token.path;
